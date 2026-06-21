@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Marias timeregistrering</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#4C1D95">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GAT Timer">
 <style>
   :root {
     --purple-50: #F5EEFF;
@@ -60,6 +66,138 @@
     margin-top: 2px;
   }
   .container { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex;
+    background: var(--purple-900);
+    border-bottom: 2px solid var(--purple-800);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 6px 9px;
+    border: none;
+    background: none;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    letter-spacing: 0.01em;
+    transition: color 0.15s;
+  }
+  .tab-btn.active {
+    color: white;
+    border-bottom-color: #C89BFF;
+  }
+  .tab-page { display: none; }
+  .tab-page.active { display: block; }
+
+  /* GAT history table */
+  .gat-history {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .gat-history-header {
+    padding: 0.85rem 1.1rem 0.6rem;
+    background: var(--purple-50);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--purple-800);
+  }
+  .gat-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+    padding: 0.65rem 1.1rem;
+    border-bottom: 1px solid rgba(124,58,237,0.07);
+    font-size: 0.8rem;
+    align-items: center;
+  }
+  .gat-row:last-child { border-bottom: none; }
+  .gat-row.head {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--purple-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--purple-50);
+    border-bottom: 1px solid var(--border);
+  }
+  .gat-row .minus { color: var(--red-600); font-weight: 600; }
+  .gat-row .plus { color: var(--green-600); font-weight: 600; }
+  .gat-row .date { color: var(--purple-900); font-weight: 500; }
+  .gat-empty {
+    padding: 2rem 1.1rem;
+    text-align: center;
+    color: var(--gray-600);
+    font-size: 0.85rem;
+  }
+  .gat-row-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-200); font-size: 0.85rem; padding: 2px 4px; border-radius: 3px;
+  }
+  .gat-row-del:hover { color: var(--red-600); background: var(--red-50); }
+
+  /* Settings page */
+  .settings-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .settings-section h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--purple-900);
+    margin-bottom: 0.75rem;
+  }
+  .settings-section label {
+    font-size: 0.78rem;
+    color: var(--gray-600);
+    display: block;
+    margin-bottom: 3px;
+    margin-top: 10px;
+  }
+  .settings-section label:first-of-type { margin-top: 0; }
+  .settings-section input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: var(--purple-50);
+    color: var(--purple-900);
+    outline: none;
+  }
+  .settings-section input:focus { border-color: var(--purple-400); }
+  .btn-settings-save {
+    background: var(--purple-600); color: white; border: none;
+    border-radius: var(--radius-sm); padding: 0.65rem 1.1rem;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px;
+  }
+  .btn-settings-save:hover { background: var(--purple-800); }
+  .btn-danger-full {
+    background: var(--red-50); color: var(--red-800);
+    border: 1px solid rgba(163,45,45,0.2);
+    border-radius: var(--radius-sm); padding: 0.65rem 1.1rem;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px;
+  }
+  .btn-danger-full:hover { background: #f5d0d0; }
+  .notif-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px solid rgba(124,58,237,0.07);
+    font-size: 0.83rem; color: var(--purple-900);
+  }
+  .notif-row:last-child { border-bottom: none; }
+  .notif-row input[type=time] {
+    width: auto; padding: 4px 8px; font-size: 0.83rem;
+  }
 
   /* Summary cards */
   .summary-grid {
@@ -243,6 +381,24 @@
   .badge-plus { background: var(--purple-50); color: var(--purple-800); }
   .badge-none { background: var(--gray-50); color: var(--gray-600); }
   .badge-weekend { background: var(--amber-50); color: var(--amber-600); }
+  .badge-ferie { background: #E0F2FE; color: #0369A1; }
+  .badge-syk { background: #FEF3C7; color: #92400E; }
+  .badge-helligdag { background: var(--amber-50); color: var(--amber-600); }
+  .absence-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-top: 1px solid var(--border);
+    font-size: 0.8rem; flex-wrap: wrap;
+  }
+  .absence-row span { color: var(--gray-600); }
+  .absence-btn {
+    padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border);
+    font-size: 0.75rem; cursor: pointer; background: var(--gray-50); color: var(--gray-600);
+    font-weight: 500;
+  }
+  .absence-btn:hover { background: var(--purple-50); border-color: var(--purple-200); }
+  .absence-btn.active-ferie { background: #E0F2FE; color: #0369A1; border-color: #BAE6FD; }
+  .absence-btn.active-syk { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+  .absence-btn.active-helligdag { background: var(--amber-50); color: var(--amber-600); border-color: #FCD34D; }
 
   .day-entries { border-top: 1px solid var(--border); }
   .entry-row {
@@ -393,6 +549,46 @@
   }
   .btn-firebase-save:hover { background: var(--purple-800); }
 
+  /* Month overview */
+  .month-card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); margin-bottom: 10px; overflow: hidden;
+  }
+  .month-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 1.1rem; background: var(--purple-50);
+    border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .month-header:hover { background: var(--purple-100); }
+  .month-title { font-size: 0.95rem; font-weight: 600; color: var(--purple-900); }
+  .month-summary { display: flex; gap: 10px; align-items: center; }
+  .month-body { display: none; }
+  .month-body.open { display: block; }
+  .month-week-row {
+    display: grid; grid-template-columns: 80px repeat(7,1fr);
+    padding: 6px 1.1rem; border-bottom: 1px solid rgba(124,58,237,0.06);
+    font-size: 0.75rem; align-items: center;
+  }
+  .month-week-row.head {
+    font-weight: 600; color: var(--purple-600); font-size: 0.7rem;
+    text-transform: uppercase; background: var(--purple-50);
+  }
+  .month-week-row:last-child { border-bottom: none; }
+  .mday { text-align: center; padding: 2px; border-radius: 4px; }
+  .mday.worked { background: var(--purple-50); color: var(--purple-800); font-weight: 500; }
+  .mday.ok { background: var(--green-50); color: var(--green-800); font-weight: 600; }
+  .mday.minus { background: var(--red-50); color: var(--red-800); font-weight: 600; }
+  .mday.weekend { color: var(--gray-200); }
+  .mday.future { color: var(--gray-200); }
+  .mday.absence { background: #E0F2FE; color: #0369A1; font-weight: 500; }
+  .month-totals {
+    display: flex; gap: 12px; padding: 8px 1.1rem;
+    border-top: 1px solid var(--border); background: var(--gray-50);
+    font-size: 0.78rem; flex-wrap: wrap;
+  }
+  .month-totals span { color: var(--gray-600); }
+  .month-totals strong { color: var(--purple-900); }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -524,6 +720,13 @@
   </div>
 </header>
 
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('home')">📝 Registrering</button>
+  <button class="tab-btn" onclick="switchTab('month')">📅 Måneder</button>
+  <button class="tab-btn" onclick="switchTab('gat')">📋 GAT</button>
+  <button class="tab-btn" onclick="switchTab('settings')">⚙ Innstill.</button>
+</nav>
+
 <div class="container">
 
   <!-- Config panel (hidden when configured) -->
@@ -552,6 +755,7 @@
   </div>
 
   <!-- Main app (shown when configured) -->
+  <div id="tab-home" class="tab-page active">
   <div id="mainApp" style="display:block;">
 
     <div class="week-nav">
@@ -576,9 +780,7 @@
         <div class="pulse"></div>
         <span id="activeText">Aktiv økt: –</span>
       </div>
-      <div class="status-bar" style="justify-content:flex-end;">
-        <button onclick="resetAllData()" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--gray-600);text-decoration:underline;padding:0;">Nullstill alle data</button>
-      </div>
+
     </div>
 
     <div id="daysList"></div>
@@ -606,8 +808,71 @@
       </div>
     </div>
 
-    <button class="btn-gat" onclick="lagtInnIGAT()">✓ Lagt inn i GAT</button>
+    <button class="btn-gat" onclick="lagtInnIGAT()">✓ Registrert i GAT</button>
 
+  </div>
+</div>
+
+  </div>
+<!-- GAT historikk-fane -->
+<div id="tab-gat" class="tab-page container">
+  <div class="gat-history">
+    <div class="gat-history-header">📋 GAT-innleveringshistorikk</div>
+    <div class="gat-row head">
+      <span>Dato</span>
+      <span>Ut av GAT</span>
+      <span>Inn i GAT</span>
+      <span>Saldo</span>
+      <span></span>
+    </div>
+    <div id="gatHistoryList"><div class="gat-empty">Ingen innleveringer registrert ennå.</div></div>
+  </div>
+</div>
+
+<!-- Månedsoversikt-fane -->
+<div id="tab-month" class="tab-page container">
+  <div id="monthOverview"></div>
+  <button class="btn-gat" onclick="exportCSV()" style="margin-top:4px;">⬇ Eksporter til CSV</button>
+</div>
+
+<!-- Innstillinger-fane -->
+<div id="tab-settings" class="tab-page container">
+  <div class="settings-section">
+    <h3>🔔 Varseltidspunkter</h3>
+    <div class="notif-row">
+      <span>Morgenvarsel (start jobb)</span>
+      <input type="time" id="notifMorning" value="07:45" onchange="saveNotifSettings()" />
+    </div>
+    <div class="notif-row">
+      <span>Ettermiddagsvarsel (slutt jobb)</span>
+      <input type="time" id="notifEvening" value="15:30" onchange="saveNotifSettings()" />
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>⚙ Arbeidsinnstillinger</h3>
+    <label>Arbeidstimer per dag</label>
+    <input type="number" id="settingsHours" value="7.5" step="0.5" min="1" max="12" />
+    <label>Startdato for regnskap</label>
+    <input type="date" id="settingsStartDate" value="2026-06-15" />
+    <button class="btn-settings-save" onclick="saveWorkSettings()">Lagre innstillinger</button>
+  </div>
+
+  <div class="settings-section">
+    <h3>📱 Installer app</h3>
+    <p style="font-size:0.82rem;color:var(--gray-600);margin-bottom:10px;line-height:1.5;">
+      Installer appen på telefonen for å få push-varsler selv når nettleseren er lukket.
+    </p>
+    <button class="btn-settings-save" id="btnInstallPWA" onclick="installPWA()" style="display:none;">
+      📲 Legg til på hjemskjerm
+    </button>
+    <div id="pwaStatus" style="font-size:0.8rem;color:var(--gray-600);margin-top:6px;"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>🗄 Data</h3>
+    <button class="btn-settings-save" onclick="exportCSV()" style="margin-bottom:8px;">⬇ Eksporter til CSV</button>
+    <button class="btn-danger-full" onclick="resetAllData()">🗑 Nullstill alle data</button>
   </div>
 </div>
 
@@ -634,8 +899,8 @@
 
 <script>
 // ─── State ────────────────────────────────────────────────────
-const WORK_HOURS_PER_DAY = 7.5;
-const START_DATE = new Date(2026, 5, 15); // Monday June 22, 2026
+let WORK_HOURS_PER_DAY = 7.5;
+let START_DATE = new Date(2026, 5, 15);
 const DAY_NAMES = ['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
 const DAY_NAMES_SHORT = ['Søn','Man','Tir','Ons','Tor','Fre','Lør'];
 const WEEKDAY_TARGETS = [0, 7.5, 7.5, 7.5, 7.5, 7.5, 0]; // Sun=0, Mon-Fri=7.5, Sat=0
@@ -644,6 +909,8 @@ let db = null;
 let userId = 'default';
 let demoMode = false;
 let allEntries = {}; // { "2026-06-22": [{id, start, end}] }
+let dayAbsence = {}; // { "2026-06-22": 'ferie'|'syk'|'helligdag' }
+const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag' };
 let gatOffset = 0; // saldo-justement etter "Lagt inn i GAT"
 let gatOffsetDate = null; // dato for siste GAT-innlevering
 let activeEntry = null; // {dateKey, id, start}
@@ -712,6 +979,8 @@ function startApp() {
   loadAllEntries();
   setInterval(tickActive, 1000);
   updateTodayLabel();
+  loadGatHistory();
+  applyWorkSettings();
 }
 
 // ─── Firestore / Storage ──────────────────────────────────────
@@ -748,6 +1017,8 @@ async function loadAllEntries() {
         });
         localStorage.setItem('tt_entries_local', JSON.stringify(allEntries));
       }
+      const savedAbsence = localStorage.getItem('tt_absence_local');
+      if (savedAbsence) dayAbsence = JSON.parse(savedAbsence);
       const savedActive = localStorage.getItem('tt_active_local');
       if (savedActive) {
         activeEntry = JSON.parse(savedActive);
@@ -769,8 +1040,18 @@ async function loadAllEntries() {
     allEntries = {};
     snap.forEach(doc => {
       const d = doc.data();
-      if (!allEntries[d.dateKey]) allEntries[d.dateKey] = [];
-      allEntries[d.dateKey].push({id: doc.id, start: d.start, end: d.end || null});
+      if (d.type === 'absence') {
+        dayAbsence[d.dateKey] = d.absenceType;
+      } else if (d.type === 'gat_history') {
+        gatHistory = d.history || [];
+      } else if (d.type === 'settings') {
+        if (d.hours) WORK_HOURS_PER_DAY = d.hours;
+        if (d.startDate) { const [y,m,dd] = d.startDate.split('-').map(Number); START_DATE = new Date(y,m-1,dd); }
+        if (d.notifMorning) try { localStorage.setItem('tt_notif_settings', JSON.stringify({morning: d.notifMorning, evening: d.notifEvening})); } catch(e) {}
+      } else {
+        if (!allEntries[d.dateKey]) allEntries[d.dateKey] = [];
+        allEntries[d.dateKey].push({id: doc.id, start: d.start, end: d.end || null});
+      }
     });
     const active = Object.values(allEntries).flat().find(e => !e.end);
     if (active) {
@@ -813,14 +1094,13 @@ async function deleteEntry(dateKey, id) {
 function saveLocal() {
   try {
     localStorage.setItem('tt_entries_local', JSON.stringify(allEntries));
+    localStorage.setItem('tt_absence_local', JSON.stringify(dayAbsence));
     if (activeEntry) {
       localStorage.setItem('tt_active_local', JSON.stringify(activeEntry));
     } else {
       localStorage.removeItem('tt_active_local');
     }
-  } catch(e) {
-    // localStorage ikke tilgjengelig – data lever kun i minnet denne sesjonen
-  }
+  } catch(e) {}
 }
 
 // ─── Actions ──────────────────────────────────────────────────
@@ -979,8 +1259,12 @@ function renderDayCard(date, now) {
   const card = document.createElement('div');
   card.className = 'day-card';
 
+  const absence = dayAbsence[dk];
   let badgeClass = 'badge-none', badgeText = '—';
   if (isFuture) { badgeClass = 'badge-none'; badgeText = ''; }
+  else if (absence === 'ferie') { badgeClass = 'badge-ferie'; badgeText = '🏖 Ferie'; }
+  else if (absence === 'syk') { badgeClass = 'badge-syk'; badgeText = '🤒 Syk'; }
+  else if (absence === 'helligdag') { badgeClass = 'badge-helligdag'; badgeText = '🎉 Helligdag'; }
   else if (isWeekend && worked > 0) { badgeClass = 'badge-plus'; badgeText = '+' + formatHours(worked); }
   else if (isWeekend) { badgeClass = 'badge-weekend'; badgeText = 'Helg'; }
   else if (worked === 0) { badgeClass = 'badge-minus'; badgeText = '−' + formatHours(target); }
@@ -1024,7 +1308,46 @@ function renderDayCard(date, now) {
     card.appendChild(entriesDiv);
   }
 
+  // Absence row
+  const absRow = document.createElement('div');
+  absRow.className = 'absence-row';
+  absRow.innerHTML = '<span>Dagtype:</span>';
+  ['ferie','syk','helligdag'].forEach(type => {
+    const btn = document.createElement('button');
+    btn.className = 'absence-btn' + (dayAbsence[dk] === type ? ' active-' + type : '');
+    btn.textContent = ABSENCE_LABELS[type];
+    btn.onclick = () => toggleAbsence(dk, type);
+    absRow.appendChild(btn);
+  });
+  if (dayAbsence[dk]) {
+    const clrBtn = document.createElement('button');
+    clrBtn.className = 'absence-btn';
+    clrBtn.textContent = '✕ Fjern';
+    clrBtn.onclick = () => toggleAbsence(dk, null);
+    absRow.appendChild(clrBtn);
+  }
+  card.appendChild(absRow);
+
   return card;
+}
+
+function toggleAbsence(dk, type) {
+  if (type === null) {
+    delete dayAbsence[dk];
+  } else {
+    dayAbsence[dk] = dayAbsence[dk] === type ? undefined : type;
+    if (dayAbsence[dk] === undefined) delete dayAbsence[dk];
+  }
+  if (demoMode) {
+    try { localStorage.setItem('tt_absence_local', JSON.stringify(dayAbsence)); } catch(e) {}
+  } else if (db) {
+    if (dayAbsence[dk]) {
+      colPath().doc('absence_' + dk).set({type: 'absence', dateKey: dk, absenceType: dayAbsence[dk]}).catch(e=>{});
+    } else {
+      colPath().doc('absence_' + dk).delete().catch(e=>{});
+    }
+  }
+  renderAll();
 }
 
 function tickActive() {
@@ -1169,15 +1492,27 @@ function lagtInnIGAT() {
     const dk = toDateKey(d);
     const dow = d.getDay();
     const isWeekend = (dow === 0 || dow === 6);
-    const target = isWeekend ? 0 : WORK_HOURS_PER_DAY;
+    const absence = dayAbsence[dk];
+    const target = (isWeekend || absence) ? 0 : WORK_HOURS_PER_DAY;
     const worked = getWorkedHours(dk, now);
     totalWorked += worked;
-    if (!isWeekend || worked > 0) totalTarget += target;
+    if (!isWeekend && !absence) totalTarget += WORK_HOURS_PER_DAY;
+    else if (worked > 0) totalTarget += 0;
     d.setDate(d.getDate() + 1);
   }
   const balance = totalWorked - totalTarget;
 
   if (!confirm('Bekreft at du har lagt ' + formatHours(Math.abs(balance)) + ' inn i GAT. Saldoen nullstilles fra i dag.')) return;
+
+  // Save to history
+  const dateStr = now.getDate() + '. ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+  gatHistory.push({
+    date: dateStr,
+    minus: balance < 0 ? Math.abs(balance) : 0,
+    plus: balance > 0 ? balance : 0,
+    balance: balance
+  });
+  saveGatHistory();
 
   gatOffset = balance;
   gatOffsetDate = todayKey;
@@ -1294,6 +1629,310 @@ function scheduleNotifications() {
       }
     }
   }, 60000);
+}
+
+// ─── Tab navigation ───────────────────────────────────────────
+function switchTab(tab) {
+  ['home','month','gat','settings'].forEach(t => {
+    const page = document.getElementById('tab-' + t);
+    if (page) page.classList.toggle('active', t === tab);
+  });
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    const tabs = ['home','month','gat','settings'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  if (tab === 'gat') renderGatHistory();
+  if (tab === 'settings') loadSettingsPage();
+  if (tab === 'month') renderMonthOverview();
+}
+
+// ─── GAT History ───────────────────────────────────────────────
+let gatHistory = []; // [{date, minus, plus, balance}]
+
+function applyWorkSettings() {
+  try {
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    if (ws.hours) WORK_HOURS_PER_DAY = parseFloat(ws.hours);
+    if (ws.startDate) {
+      const [y, m, d] = ws.startDate.split('-').map(Number);
+      START_DATE = new Date(y, m-1, d);
+    }
+  } catch(e) {}
+}
+
+function loadGatHistory() {
+  try {
+    const saved = localStorage.getItem('tt_gat_history');
+    if (saved) gatHistory = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveGatHistory() {
+  try { localStorage.setItem('tt_gat_history', JSON.stringify(gatHistory)); } catch(e) {}
+  if (!demoMode && db) {
+    colPath().doc('__gat_history__').set({type: 'gat_history', history: gatHistory}).catch(e => console.log(e));
+  }
+}
+
+function renderGatHistory() {
+  const container = document.getElementById('gatHistoryList');
+  if (!container) return;
+  if (gatHistory.length === 0) {
+    container.innerHTML = '<div class="gat-empty">Ingen innleveringer registrert ennå.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  [...gatHistory].reverse().forEach((entry, i) => {
+    const idx = gatHistory.length - 1 - i;
+    const row = document.createElement('div');
+    row.className = 'gat-row';
+    const balClass = entry.balance >= 0 ? 'plus' : 'minus';
+    const balSign = entry.balance >= 0 ? '+' : '−';
+    row.innerHTML = `
+      <span class="date">${entry.date}</span>
+      <span class="minus">${entry.minus > 0 ? '−' + formatHours(entry.minus) : '—'}</span>
+      <span class="plus">${entry.plus > 0 ? '+' + formatHours(entry.plus) : '—'}</span>
+      <span class="${balClass}">${balSign}${formatHours(Math.abs(entry.balance))}</span>
+      <button class="gat-row-del" onclick="deleteGatEntry(${idx})" title="Slett">✕</button>`;
+    container.appendChild(row);
+  });
+}
+
+function deleteGatEntry(idx) {
+  if (!confirm('Slett denne GAT-innleveringen?')) return;
+  gatHistory.splice(idx, 1);
+  saveGatHistory();
+  renderGatHistory();
+}
+
+// ─── Settings page ─────────────────────────────────────────────
+function loadSettingsPage() {
+  try {
+    const ns = JSON.parse(localStorage.getItem('tt_notif_settings') || '{}');
+    if (ns.morning) document.getElementById('notifMorning').value = ns.morning;
+    if (ns.evening) document.getElementById('notifEvening').value = ns.evening;
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    if (ws.hours) document.getElementById('settingsHours').value = ws.hours;
+    if (ws.startDate) document.getElementById('settingsStartDate').value = ws.startDate;
+  } catch(e) {}
+}
+
+function saveNotifSettings() {
+  const morning = document.getElementById('notifMorning').value;
+  const evening = document.getElementById('notifEvening').value;
+  try { localStorage.setItem('tt_notif_settings', JSON.stringify({morning, evening})); } catch(e) {}
+  showToast('Varseltider lagret');
+}
+
+function saveWorkSettings() {
+  const hours = parseFloat(document.getElementById('settingsHours').value);
+  const startDate = document.getElementById('settingsStartDate').value;
+  if (isNaN(hours) || hours < 1) { showToast('Ugyldig antall timer'); return; }
+  try { localStorage.setItem('tt_work_settings', JSON.stringify({hours, startDate})); } catch(e) {}
+  // Apply settings
+  if (!isNaN(hours)) { window.WORK_HOURS_PER_DAY = hours; }
+  if (startDate) {
+    const [y, m, d] = startDate.split('-').map(Number);
+    window.START_DATE = new Date(y, m-1, d);
+  }
+  if (!demoMode && db) {
+    const ns = JSON.parse(localStorage.getItem('tt_notif_settings') || '{}');
+    colPath().doc('__settings__').set({
+      type: 'settings', hours, startDate,
+      notifMorning: ns.morning || '07:45', notifEvening: ns.evening || '15:30'
+    }).catch(e => console.log(e));
+  }
+  showToast('Innstillinger lagret');
+  renderAll();
+}
+
+// ─── Månedsoversikt ───────────────────────────────────────────
+const MONTH_NAMES = ['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
+
+function renderMonthOverview() {
+  const container = document.getElementById('monthOverview');
+  if (!container) return;
+  container.innerHTML = '';
+  const now = new Date();
+  const months = {};
+
+  // Group all days from START_DATE to today by year-month
+  const d = new Date(START_DATE);
+  while (d <= now) {
+    const mk = d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+    if (!months[mk]) months[mk] = {year: d.getFullYear(), month: d.getMonth(), days: []};
+    months[mk].days.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Render each month, most recent first
+  Object.keys(months).sort().reverse().forEach(mk => {
+    const m = months[mk];
+    let mWorked = 0, mTarget = 0, mAbsence = 0;
+
+    m.days.forEach(day => {
+      const dk = toDateKey(day);
+      const dow = day.getDay();
+      const isWk = (dow === 0 || dow === 6);
+      const abs = dayAbsence[dk];
+      const worked = getWorkedHours(dk, now);
+      mWorked += worked;
+      if (!isWk && !abs) mTarget += WORK_HOURS_PER_DAY;
+      if (abs) mAbsence++;
+    });
+
+    const mBalance = mWorked - mTarget;
+    const card = document.createElement('div');
+    card.className = 'month-card';
+
+    const balClass = mBalance >= 0 ? 'badge-ok' : 'badge-minus';
+    const balSign = mBalance >= 0 ? '+' : '−';
+    card.innerHTML = `
+      <div class="month-header" onclick="toggleMonth('${mk}')">
+        <span class="month-title">${MONTH_NAMES[m.month]} ${m.year}</span>
+        <div class="month-summary">
+          <span style="font-size:0.78rem;color:var(--gray-600)">${formatHours(mWorked)}t jobbet</span>
+          <span class="badge ${balClass}">${balSign}${formatHours(Math.abs(mBalance))}</span>
+        </div>
+      </div>
+      <div class="month-body" id="month-${mk}">
+        ${renderMonthGrid(m.days, now)}
+        <div class="month-totals">
+          <span>Jobbet: <strong>${formatHours(mWorked)}t</strong></span>
+          <span>Mål: <strong>${formatHours(mTarget)}t</strong></span>
+          <span>Saldo: <strong style="color:${mBalance>=0?'var(--green-600)':'var(--red-600)'}">${balSign}${formatHours(Math.abs(mBalance))}</strong></span>
+          ${mAbsence > 0 ? `<span>Fravær: <strong>${mAbsence} dager</strong></span>` : ''}
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function renderMonthGrid(days, now) {
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  // Build weeks
+  const weeks = [];
+  let week = [];
+  days.forEach(d => {
+    const dow = d.getDay();
+    const adjusted = dow === 0 ? 6 : dow - 1; // Mon=0
+    if (week.length === 0 && adjusted > 0) {
+      for (let i = 0; i < adjusted; i++) week.push(null);
+    }
+    week.push(d);
+    if (week.length === 7) { weeks.push(week); week = []; }
+  });
+  if (week.length > 0) weeks.push(week);
+
+  let html = `<div class="month-week-row head"><span>Uke</span>${DAY_SHORT.map(d=>`<span style="text-align:center">${d}</span>`).join('')}</div>`;
+  weeks.forEach(w => {
+    const firstDay = w.find(d => d !== null);
+    if (!firstDay) return;
+    const weekNum = getWeekNumber(firstDay);
+    html += `<div class="month-week-row"><span style="color:var(--purple-600);font-weight:600">Uke ${weekNum}</span>`;
+    for (let i = 0; i < 7; i++) {
+      const day = w[i] || null;
+      if (!day) { html += '<span></span>'; continue; }
+      const dk = toDateKey(day);
+      const dow = day.getDay();
+      const isWk = (dow === 0 || dow === 6);
+      const abs = dayAbsence[dk];
+      const worked = getWorkedHours(dk, now);
+      const isFuture = day > now;
+      let cls = 'mday';
+      let txt = day.getDate();
+      if (isFuture) cls += ' future';
+      else if (abs) { cls += ' absence'; txt = day.getDate(); }
+      else if (isWk) cls += ' weekend';
+      else if (worked >= WORK_HOURS_PER_DAY) cls += ' ok';
+      else if (worked > 0) cls += ' worked';
+      else if (!isFuture) cls += ' minus';
+      html += `<span class="${cls}" title="${dk}">${txt}</span>`;
+    }
+    html += '</div>';
+  });
+  return html;
+}
+
+function toggleMonth(mk) {
+  const body = document.getElementById('month-' + mk);
+  if (body) body.classList.toggle('open');
+}
+
+function getWeekNumber(d) {
+  const date = new Date(d);
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+// ─── CSV Export ────────────────────────────────────────────────
+function exportCSV() {
+  const now = new Date();
+  let csv = 'Dato;Ukedag;Timer jobbet;Mål;Differanse;Dagtype\n';
+  const d = new Date(START_DATE);
+  while (toDateKey(d) <= toDateKey(now)) {
+    const dk = toDateKey(d);
+    const dow = d.getDay();
+    const isWk = (dow === 0 || dow === 6);
+    const abs = dayAbsence[dk];
+    const worked = getWorkedHours(dk, now);
+    const target = (isWk || abs) ? 0 : WORK_HOURS_PER_DAY;
+    const diff = worked - target;
+    const dagtype = abs ? ABSENCE_LABELS[abs] : (isWk ? 'Helg' : 'Arbeidsdag');
+    csv += `${dk};${DAY_NAMES[dow]};${worked.toFixed(2).replace('.',',')};${target.toFixed(2).replace('.',',')};${diff.toFixed(2).replace('.',',')};${dagtype}\n`;
+    d.setDate(d.getDate() + 1);
+  }
+  // Add GAT history
+  if (gatHistory.length > 0) {
+    csv += '\nGAT-historikk\nDato;Timer ut av GAT;Timer inn i GAT;Saldo\n';
+    gatHistory.forEach(e => {
+      csv += `${e.date};${e.minus.toFixed(2).replace('.',',')};${e.plus.toFixed(2).replace('.',',')};${e.balance.toFixed(2).replace('.',',')}\n`;
+    });
+  }
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'gat-arbeidstimer-' + toDateKey(now) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV eksportert');
+}
+
+// ─── PWA Install ───────────────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('btnInstallPWA');
+  if (btn) btn.style.display = 'block';
+  const status = document.getElementById('pwaStatus');
+  if (status) status.textContent = 'Appen kan installeres på hjemskjermen.';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('btnInstallPWA');
+  if (btn) btn.style.display = 'none';
+  const status = document.getElementById('pwaStatus');
+  if (status) status.textContent = '✓ App er installert!';
+  showToast('App installert på hjemskjermen!');
+});
+
+async function installPWA() {
+  if (!deferredInstallPrompt) {
+    showToast('Åpne appen i nettleseren for å installere');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const result = await deferredInstallPrompt.userChoice;
+  if (result.outcome === 'accepted') showToast('App installert!');
+  deferredInstallPrompt = null;
 }
 
 // ─── Boot ─────────────────────────────────────────────────────

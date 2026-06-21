@@ -1,0 +1,22 @@
+{
+  "name": "Marias timeregistrering",
+  "short_name": "GAT Timer",
+  "description": "Timeregistrering for GAT",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#faf5ff",
+  "theme_color": "#4C1D95",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/4C1D95/ffffff?text=GAT",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/4C1D95/ffffff?text=GAT",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
