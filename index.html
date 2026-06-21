@@ -690,9 +690,23 @@
 
   /* Responsive */
   @media (max-width: 480px) {
-    .summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .summary-card .value { font-size: 1.35rem; }
-    .btn { font-size: 0.92rem; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+    .summary-card { padding: 0.75rem 0.85rem; }
+    .summary-card .label { font-size: 0.62rem; letter-spacing: 0.03em; }
+    .summary-card .value { font-size: 1.2rem; }
+    .summary-card .sub { font-size: 0.68rem; }
+    .btn { font-size: 0.88rem; padding: 0.75rem 8px; }
+    .day-name { font-size: 0.85rem; }
+    .day-date { font-size: 0.72rem; }
+    .entry-row { padding: 0.45rem 0.75rem; }
+    .entry-times { font-size: 0.78rem; }
+    .week-nav { padding: 0.6rem 0.75rem; }
+    .week-nav .week-label { font-size: 0.78rem; }
+    .week-nav button { padding: 4px 10px; font-size: 0.78rem; }
+    .tab-btn { font-size: 0.7rem; padding: 9px 4px; }
+    .action-section { padding: 0.85rem 0.9rem; }
+    .container { padding: 0.85rem 0.75rem; }
+    .gat-row { font-size: 0.72rem; padding: 0.5rem 0.75rem; }
   }
 
   .spinner {
@@ -1340,7 +1354,8 @@ function renderDayCard(date, now) {
     card.appendChild(entriesDiv);
   }
 
-  // Absence row
+  // Absence row – kun på hverdager
+  if (isWeekend) return card;
   const absRow = document.createElement('div');
   absRow.className = 'absence-row';
   absRow.innerHTML = '<span>Dagtype:</span>';
@@ -1359,7 +1374,6 @@ function renderDayCard(date, now) {
     absRow.appendChild(clrBtn);
   }
   card.appendChild(absRow);
-
   return card;
 }
 
@@ -1599,17 +1613,35 @@ function populateFirebasePanel() {
   if (cfg.userId) document.getElementById('fbUserId').value = cfg.userId;
 }
 
-function resetAllData() {
+async function resetAllData() {
   if (!confirm('Dette sletter alle registreringer og laster inn forhåndsdata for uke 25. Fortsette?')) return;
+
+  // Slett fra Firebase
+  if (!demoMode && db) {
+    try {
+      const snap = await colPath().get();
+      const batch = db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    } catch(e) { console.log('Firebase slett feil:', e); }
+  }
+
+  // Slett fra localStorage
   try {
     localStorage.removeItem('tt_entries_local');
     localStorage.removeItem('tt_active_local');
     localStorage.removeItem('tt_gat_offset');
+    localStorage.removeItem('tt_absence_local');
+    localStorage.removeItem('tt_gat_history');
   } catch(e) {}
+
   allEntries = {};
   activeEntry = null;
   gatOffset = 0;
   gatOffsetDate = null;
+  gatHistory = [];
+  dayAbsence = {};
+
   document.getElementById('btnStop').disabled = true;
   document.getElementById('btnStart').disabled = false;
   document.getElementById('activeSession').style.display = 'none';
