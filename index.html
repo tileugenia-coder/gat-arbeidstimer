@@ -1528,7 +1528,7 @@ function lagtInnIGAT() {
   const now = new Date();
   const todayKey = toDateKey(now);
 
-  // Beregn nåværende saldo
+  // Beregn periode-differanse (siden sist GAT-registrering, uten startsaldo)
   let totalWorked = 0, totalTarget = 0;
   const d = new Date(START_DATE);
   while (toDateKey(d) <= todayKey) {
@@ -1536,18 +1536,27 @@ function lagtInnIGAT() {
     const dow = d.getDay();
     const isWeekend = (dow === 0 || dow === 6);
     const absence = dayAbsence[dk];
-    const target = (isWeekend || absence) ? 0 : WORK_HOURS_PER_DAY;
     const worked = getWorkedHours(dk, now);
     totalWorked += worked;
     if (!isWeekend && !absence) totalTarget += WORK_HOURS_PER_DAY;
-    else if (worked > 0) totalTarget += 0;
     d.setDate(d.getDate() + 1);
   }
-  const balance = totalWorked - totalTarget;
 
-  if (!confirm('Bekreft at du har lagt ' + formatHours(Math.abs(balance)) + ' inn i GAT. Banken i GAT nullstilles fra i dag.')) return;
+  // Periode-differanse = arbeidet - mål - forrige gatOffset
+  const periodDiff = (totalWorked - totalTarget) - gatOffset;
+  const periodMinus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
+  const periodPlus = periodDiff > 0 ? periodDiff : 0;
 
-  // Save to history with period
+  // Ny banksaldo = startsaldo + periode-differanse
+  const newBalance = startSaldo + periodDiff;
+
+  const confirmMsg = periodDiff >= 0
+    ? 'Bekreft: Legg inn ' + formatHours(periodPlus) + 't overtid i GAT. Ny bank: +' + formatHours(newBalance) + 't. Timer inn/ut nullstilles.'
+    : 'Bekreft: Trekk ' + formatHours(periodMinus) + 't fra GAT. Ny bank: ' + (newBalance >= 0 ? '+' : '-') + formatHours(Math.abs(newBalance)) + 't. Timer inn/ut nullstilles.';
+
+  if (!confirm(confirmMsg)) return;
+
+  // Lagre til historikk
   const dateStr = now.getDate() + '. ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
   const periodFrom = gatPeriodStart || toDateKey(START_DATE);
   const periodFromDate = new Date(periodFrom);
@@ -1557,20 +1566,43 @@ function lagtInnIGAT() {
     date: dateStr,
     periodFrom: periodFromStr,
     periodTo: periodToStr,
-    minus: balance < 0 ? Math.abs(balance) : 0,
-    plus: balance > 0 ? balance : 0,
-    balance: balance
+    minus: periodMinus,
+    plus: periodPlus,
+    balance: newBalance
   });
   saveGatHistory();
 
-  gatOffset = balance;
+  // Oppdater startsaldo til ny banksaldo, nullstill gatOffset
+  startSaldo = newBalance;
+  gatOffset = 0;
   gatOffsetDate = todayKey;
   gatPeriodStart = todayKey;
+
   try {
-    localStorage.setItem('tt_gat_offset', JSON.stringify({offset: gatOffset, date: gatOffsetDate}));
+    localStorage.setItem('tt_gat_offset', JSON.stringify({offset: 0, date: gatOffsetDate}));
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    ws.startSaldo = newBalance;
+    localStorage.setItem('tt_work_settings', JSON.stringify(ws));
   } catch(e) {}
+
+  // Sync til Firebase
+  if (!demoMode && db) {
+    const ws2 = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    colPath().doc('__settings__').set({
+      type: 'settings',
+      hours: ws2.hours || WORK_HOURS_PER_DAY,
+      startDate: ws2.startDate || toDateKey(START_DATE),
+      startSaldo: newBalance,
+      notifMorning: ws2.notifMorning || '07:45',
+      notifEvening: ws2.notifEvening || '15:30'
+    }).catch(e => console.log(e));
+    colPath().doc('__gat_offset__').set({
+      type: 'gat_offset', offset: 0, date: gatOffsetDate
+    }).catch(e => console.log(e));
+  }
+
   renderAll();
-  showToast('GAT oppdatert – saldo nullstilt');
+  showToast('Registrert i GAT – timer inn/ut nullstilt');
 }
 
 // Firebase panel fjernet - konfigurasjon er hardkodet
