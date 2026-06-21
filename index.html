@@ -1119,6 +1119,11 @@ async function loadAllEntries() {
       }
     } catch(e) {}
     renderAll();
+    try {
+      const lastTab = localStorage.getItem('tt_active_tab');
+      if (lastTab === 'month') renderMonthOverview();
+      if (lastTab === 'gat') renderGatHistory();
+    } catch(e) {}
     return;
   }
   try {
@@ -1153,6 +1158,12 @@ async function loadAllEntries() {
       await prefillWeek25();
     }
     renderAll();
+    // Oppdater aktiv fane etter data er lastet
+    try {
+      const lastTab = localStorage.getItem('tt_active_tab');
+      if (lastTab === 'month') renderMonthOverview();
+      if (lastTab === 'gat') renderGatHistory();
+    } catch(e) {}
     setStatus('online', 'Synkronisert');
   } catch(e) {
     setStatus('offline', 'Lesefeil: ' + e.message);
