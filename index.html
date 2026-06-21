@@ -1224,13 +1224,13 @@ function updateSummary() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Periode-differanse (siden sist GAT-registrering, uten startsaldo)
+  // Periode-differanse siden sist GAT-registrering
   const periodDiff = (totalWorked - totalTarget) - gatOffset;
   const minus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
   const plus = periodDiff > 0 ? periodDiff : 0;
 
-  // Banken = startsaldo + periode-differanse
-  const balance = startSaldo + periodDiff;
+  // Banken = kun startsaldo, oppdateres bare ved "Registrert i GAT"
+  const balance = startSaldo;
 
   document.getElementById('sumMinus').textContent = formatHours(minus);
   document.getElementById('sumPlus').textContent = formatHours(plus);
