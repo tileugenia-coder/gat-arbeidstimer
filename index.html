@@ -1794,6 +1794,18 @@ function saveNotifSettings() {
   const morning = document.getElementById('notifMorning').value;
   const evening = document.getElementById('notifEvening').value;
   try { localStorage.setItem('tt_notif_settings', JSON.stringify({morning, evening})); } catch(e) {}
+  // Sync to Firebase
+  if (!demoMode && db) {
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    colPath().doc('__settings__').set({
+      type: 'settings',
+      hours: ws.hours || 7.5,
+      startDate: ws.startDate || '2026-06-15',
+      startSaldo: ws.startSaldo || 0,
+      notifMorning: morning,
+      notifEvening: evening
+    }).catch(e => console.log(e));
+  }
   showToast('Varseltider lagret');
 }
 
