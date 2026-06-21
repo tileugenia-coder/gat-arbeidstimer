@@ -681,7 +681,13 @@ function initFirebase(apiKey, projectId, uid) {
   userId = uid;
   try {
     if (!firebase.apps.length) {
-      firebase.initializeApp({ apiKey, projectId, authDomain: `${projectId}.firebaseapp.com` });
+      firebase.initializeApp({
+        apiKey,
+        projectId,
+        authDomain: `${projectId}.firebaseapp.com`,
+        messagingSenderId: "246390249634",
+        appId: "1:246390249634:web:a64005874385c4fa43dffb"
+      });
     }
     db = firebase.firestore();
     db.collection('ping').doc('test').get().then(() => {
