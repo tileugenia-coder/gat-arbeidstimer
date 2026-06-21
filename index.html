@@ -1209,23 +1209,22 @@ function updateSummary() {
   const now = new Date();
   const todayKey = toDateKey(now);
 
-  // All days from start until today
-  const d = new Date(START_DATE);
+  // Beregn kun fra sist GAT-registrering (eller START_DATE)
+  const periodStart = gatOffsetDate ? new Date(gatOffsetDate) : new Date(START_DATE);
+  const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
     const dow = d.getDay();
     const isWeekend = (dow === 0 || dow === 6);
-    const target = isWeekend ? 0 : WORK_HOURS_PER_DAY;
+    const abs = dayAbsence[dk];
     const worked = getWorkedHours(dk, now);
-    if (!isWeekend || worked > 0) {
-      totalWorked += worked;
-      totalTarget += target;
-    }
+    totalWorked += worked;
+    if (!isWeekend && !abs) totalTarget += WORK_HOURS_PER_DAY;
     d.setDate(d.getDate() + 1);
   }
 
   // Periode-differanse siden sist GAT-registrering
-  const periodDiff = (totalWorked - totalTarget) - gatOffset;
+  const periodDiff = totalWorked - totalTarget;
   const minus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
   const plus = periodDiff > 0 ? periodDiff : 0;
 
@@ -1531,9 +1530,10 @@ function lagtInnIGAT() {
   const now = new Date();
   const todayKey = toDateKey(now);
 
-  // Beregn periode-differanse (siden sist GAT-registrering, uten startsaldo)
+  // Beregn kun fra sist GAT-registrering (eller START_DATE)
   let totalWorked = 0, totalTarget = 0;
-  const d = new Date(START_DATE);
+  const periodStart = gatOffsetDate ? new Date(gatOffsetDate) : new Date(START_DATE);
+  const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
     const dow = d.getDay();
@@ -1545,8 +1545,8 @@ function lagtInnIGAT() {
     d.setDate(d.getDate() + 1);
   }
 
-  // Periode-differanse = arbeidet - mål - forrige gatOffset
-  const periodDiff = (totalWorked - totalTarget) - gatOffset;
+  // Periode-differanse siden sist GAT-registrering
+  const periodDiff = totalWorked - totalTarget;
   const periodMinus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
   const periodPlus = periodDiff > 0 ? periodDiff : 0;
 
