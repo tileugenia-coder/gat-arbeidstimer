@@ -1282,7 +1282,7 @@ function updateSummary() {
     if (dow !== 0 && dow !== 6) weekTarget += WORK_HOURS_PER_DAY;
   }
   document.getElementById('sumWeek').textContent = formatHours(weekWorked);
-  document.getElementById('weekTarget').textContent = weekTarget.toFixed(1).replace('.',',');
+  document.getElementById('weekTarget').textContent = weekTarget.toFixed(2).replace('.',',');
 }
 
 function renderWeek() {
@@ -1451,9 +1451,8 @@ function formatTime(d) {
   return pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
 function formatHours(h) {
-  if (h === 0) return '0,0';
-  const total = Math.round(h * 10) / 10;
-  return total.toFixed(1).replace('.', ',');
+  if (h === 0) return '0,00';
+  return h.toFixed(2).replace('.', ',');
 }
 function getWeekStart(d) {
   const dd = new Date(d);
