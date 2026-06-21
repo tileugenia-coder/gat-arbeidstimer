@@ -722,8 +722,8 @@
 
 <nav class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('home')">📝 Registrering</button>
+  <button class="tab-btn" onclick="switchTab('gat')">📋 Historikk</button>
   <button class="tab-btn" onclick="switchTab('month')">📅 Måneder</button>
-  <button class="tab-btn" onclick="switchTab('gat')">📋 GAT</button>
   <button class="tab-btn" onclick="switchTab('settings')">⚙ Innstill.</button>
 </nav>
 
@@ -797,9 +797,9 @@
         <div class="sub">Timer til gode</div>
       </div>
       <div class="summary-card card-balance-positive" id="balanceCard">
-        <div class="label">⚖ Saldo</div>
+        <div class="label">🏦 Banken i GAT</div>
         <div class="value" id="sumBalance">–</div>
-        <div class="sub">Totalt</div>
+        <div class="sub">Din timebank i GAT</div>
       </div>
       <div class="summary-card card-week">
         <div class="label">📅 Denne uken</div>
@@ -817,12 +817,12 @@
 <!-- GAT historikk-fane -->
 <div id="tab-gat" class="tab-page container">
   <div class="gat-history">
-    <div class="gat-history-header">📋 GAT-innleveringshistorikk</div>
+    <div class="gat-history-header">📋 Historikk-innleveringshistorikk</div>
     <div class="gat-row head">
       <span>Dato</span>
       <span>Ut av GAT</span>
       <span>Inn i GAT</span>
-      <span>Saldo</span>
+      <span>Banken i GAT</span>
       <span></span>
     </div>
     <div id="gatHistoryList"><div class="gat-empty">Ingen innleveringer registrert ennå.</div></div>
@@ -855,6 +855,9 @@
     <input type="number" id="settingsHours" value="7.5" step="0.5" min="1" max="12" />
     <label>Startdato for regnskap</label>
     <input type="date" id="settingsStartDate" value="2026-06-15" />
+    <label>Startsaldo i banken (timer du hadde før startdato)</label>
+    <input type="number" id="settingsStartSaldo" value="0" step="0.25" placeholder="f.eks. 25.75 for 25t 45min" />
+    <p style="font-size:0.75rem;color:var(--gray-600);margin-top:4px;">Skriv inn desimaltall: 25t 45min = 25.75</p>
     <button class="btn-settings-save" onclick="saveWorkSettings()">Lagre innstillinger</button>
   </div>
 
@@ -912,6 +915,7 @@ let allEntries = {}; // { "2026-06-22": [{id, start, end}] }
 let dayAbsence = {}; // { "2026-06-22": 'ferie'|'syk'|'helligdag' }
 const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag' };
 let gatOffset = 0; // saldo-justement etter "Lagt inn i GAT"
+let startSaldo = 0; // timer i banken før appens startdato
 let gatOffsetDate = null; // dato for siste GAT-innlevering
 let activeEntry = null; // {dateKey, id, start}
 let tickInterval = null;
@@ -1185,7 +1189,7 @@ function updateSummary() {
     d.setDate(d.getDate() + 1);
   }
 
-  const rawBalance = totalWorked - totalTarget;
+  const rawBalance = totalWorked - totalTarget + startSaldo;
   const balance = rawBalance - gatOffset;
   const minus = balance < 0 ? Math.abs(balance) : 0;
   const plus = balance > 0 ? balance : 0;
@@ -1502,7 +1506,7 @@ function lagtInnIGAT() {
   }
   const balance = totalWorked - totalTarget;
 
-  if (!confirm('Bekreft at du har lagt ' + formatHours(Math.abs(balance)) + ' inn i GAT. Saldoen nullstilles fra i dag.')) return;
+  if (!confirm('Bekreft at du har lagt ' + formatHours(Math.abs(balance)) + ' inn i GAT. Banken i GAT nullstilles fra i dag.')) return;
 
   // Save to history
   const dateStr = now.getDate() + '. ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
@@ -1657,6 +1661,7 @@ function applyWorkSettings() {
       const [y, m, d] = ws.startDate.split('-').map(Number);
       START_DATE = new Date(y, m-1, d);
     }
+    if (ws.startSaldo !== undefined) startSaldo = parseFloat(ws.startSaldo) || 0;
   } catch(e) {}
 }
 
@@ -1714,6 +1719,7 @@ function loadSettingsPage() {
     const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
     if (ws.hours) document.getElementById('settingsHours').value = ws.hours;
     if (ws.startDate) document.getElementById('settingsStartDate').value = ws.startDate;
+    if (ws.startSaldo !== undefined) document.getElementById('settingsStartSaldo').value = ws.startSaldo;
   } catch(e) {}
 }
 
@@ -1727,8 +1733,10 @@ function saveNotifSettings() {
 function saveWorkSettings() {
   const hours = parseFloat(document.getElementById('settingsHours').value);
   const startDate = document.getElementById('settingsStartDate').value;
+  const startSaldoVal = parseFloat(document.getElementById('settingsStartSaldo').value) || 0;
   if (isNaN(hours) || hours < 1) { showToast('Ugyldig antall timer'); return; }
-  try { localStorage.setItem('tt_work_settings', JSON.stringify({hours, startDate})); } catch(e) {}
+  startSaldo = startSaldoVal;
+  try { localStorage.setItem('tt_work_settings', JSON.stringify({hours, startDate, startSaldo: startSaldoVal})); } catch(e) {}
   // Apply settings
   if (!isNaN(hours)) { window.WORK_HOURS_PER_DAY = hours; }
   if (startDate) {
@@ -1800,7 +1808,7 @@ function renderMonthOverview() {
         <div class="month-totals">
           <span>Jobbet: <strong>${formatHours(mWorked)}t</strong></span>
           <span>Mål: <strong>${formatHours(mTarget)}t</strong></span>
-          <span>Saldo: <strong style="color:${mBalance>=0?'var(--green-600)':'var(--red-600)'}">${balSign}${formatHours(Math.abs(mBalance))}</strong></span>
+          <span>Banken i GAT: <strong style="color:${mBalance>=0?'var(--green-600)':'var(--red-600)'}">${balSign}${formatHours(Math.abs(mBalance))}</strong></span>
           ${mAbsence > 0 ? `<span>Fravær: <strong>${mAbsence} dager</strong></span>` : ''}
         </div>
       </div>`;
@@ -1888,7 +1896,7 @@ function exportCSV() {
   }
   // Add GAT history
   if (gatHistory.length > 0) {
-    csv += '\nGAT-historikk\nDato;Timer ut av GAT;Timer inn i GAT;Saldo\n';
+    csv += '\nGAT-historikk\nDato;Timer ut av GAT;Timer inn i GAT;Banken i GAT\n';
     gatHistory.forEach(e => {
       csv += `${e.date};${e.minus.toFixed(2).replace('.',',')};${e.plus.toFixed(2).replace('.',',')};${e.balance.toFixed(2).replace('.',',')}\n`;
     });
@@ -1936,6 +1944,21 @@ async function installPWA() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────
+// Set today label immediately before Firebase loads
+(function() {
+  const DAY_NAMES_INIT = ['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
+  const MONTHS_INIT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  const now = new Date();
+  // Week number calculation
+  const d2 = new Date(now); d2.setHours(0,0,0,0);
+  d2.setDate(d2.getDate() + 3 - (d2.getDay() + 6) % 7);
+  const w1 = new Date(d2.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(((d2.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+  const label = DAY_NAMES_INIT[now.getDay()] + ' ' + now.getDate() + '. ' + MONTHS_INIT[now.getMonth()] + ' ' + now.getFullYear() + ' — uke ' + weekNum;
+  const el = document.getElementById('todayLabel');
+  if (el) el.textContent = label;
+})();
+
 (function init() {
   // Firebase-konfigurasjon
   const firebaseConfig = {
