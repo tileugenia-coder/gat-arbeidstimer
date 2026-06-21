@@ -61,7 +61,7 @@
     color: var(--text);
     min-height: 100vh;
     padding: 0 0 3rem;
-    padding-top: 110px;
+    padding-top: 115px;
   }
   header {
     background: var(--purple-900);
@@ -89,31 +89,36 @@
   /* Tab navigation */
   .tab-nav {
     display: flex;
-    background: var(--purple-900);
-    border-bottom: 2px solid var(--purple-800);
+    background: #3B1578;
+    border-bottom: 2px solid #2d1060;
     position: fixed;
     top: 62px;
     left: 0;
     right: 0;
-    z-index: 99;
+    z-index: 101;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   }
   .tab-btn {
     flex: 1;
-    padding: 10px 6px 9px;
+    padding: 11px 4px 10px;
     border: none;
     background: none;
-    color: rgba(255,255,255,0.55);
-    font-size: 0.78rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
-    letter-spacing: 0.01em;
+    letter-spacing: 0em;
     transition: color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .tab-btn.active {
-    color: white;
+    color: #ffffff;
     border-bottom-color: #C89BFF;
+    background: rgba(255,255,255,0.08);
   }
   .tab-page { display: none; }
   .tab-page.active { display: block; }
@@ -768,7 +773,7 @@
   <button class="tab-btn active" onclick="switchTab('home')">📝 Registrering</button>
   <button class="tab-btn" onclick="switchTab('gat')">📋 Historikk</button>
   <button class="tab-btn" onclick="switchTab('month')">📅 Måneder</button>
-  <button class="tab-btn" onclick="switchTab('settings')">⚙ Innstill.</button>
+  <button class="tab-btn" onclick="switchTab('settings')">⚙️ Innstill.</button>
 </nav>
 
 <div class="container">
@@ -861,7 +866,7 @@
 <!-- GAT historikk-fane -->
 <div id="tab-gat" class="tab-page container">
   <div class="gat-history">
-    <div class="gat-history-header">📋 Historikk-innleveringshistorikk</div>
+    <div class="gat-history-header">Historikk-innleveringshistorikk</div>
     <div class="gat-row head" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;">
       <span>Dato</span>
       <span>Periode</span>
@@ -1122,6 +1127,10 @@ async function loadAllEntries() {
       activeEntry = {dateKey: dk, id: active.id, start: active.start};
       document.getElementById('btnStop').disabled = false;
       document.getElementById('btnStart').disabled = true;
+    }
+    // Ingen entries? Kjør prefill
+    if (Object.keys(allEntries).length === 0) {
+      await prefillWeek25();
     }
     renderAll();
     setStatus('online', 'Synkronisert');
