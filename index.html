@@ -1635,6 +1635,7 @@ function lagtInnIGAT() {
   const periodToStr = now.getDate() + '. ' + monthName(now.getMonth());
   gatHistory.push({
     date: dateStr,
+    rawDate: todayKey,
     periodFrom: periodFromStr,
     periodTo: periodToStr,
     minus: periodMinus,
@@ -1718,6 +1719,8 @@ async function resetAllData() {
   // Direkte forhåndsregistrer uten å gå via loadAllEntries
   await prefillWeek25();
   renderAll();
+  renderGatHistory();
+  renderMonthOverview();
   showToast('Data nullstilt – uke 25 lastet inn');
 }
 
@@ -1829,6 +1832,11 @@ function applyWorkSettings() {
       START_DATE = new Date(y, m-1, d);
     }
     if (ws.startSaldo !== undefined) startSaldo = parseFloat(ws.startSaldo) || 0;
+    // Lagre original startsaldo første gang
+    if (ws.origStartSaldo === undefined && ws.startSaldo !== undefined) {
+      ws.origStartSaldo = ws.startSaldo;
+      try { localStorage.setItem('tt_work_settings', JSON.stringify(ws)); } catch(e) {}
+    }
   } catch(e) {}
   // Set period start from saved offset date or START_DATE
   try {
@@ -1879,10 +1887,51 @@ function renderGatHistory() {
 }
 
 function deleteGatEntry(idx) {
-  if (!confirm('Slett denne GAT-innleveringen?')) return;
+  if (!confirm('Slett denne GAT-innleveringen? Dette oppdaterer banksaldo og periodeberegning.')) return;
+
   gatHistory.splice(idx, 1);
   saveGatHistory();
+
+  // Beregn startSaldo og gatOffsetDate på nytt fra historikken
+  if (gatHistory.length === 0) {
+    // Ingen historikk – tilbake til original startsaldo fra innstillinger
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    const origSaldo = parseFloat(ws.origStartSaldo || 0);
+    startSaldo = origSaldo;
+    gatOffsetDate = null;
+  } else {
+    // Siste historikkrad bestemmer ny saldo og offsetdato
+    const last = gatHistory[gatHistory.length - 1];
+    startSaldo = last.balance;
+    // Finn dato fra siste rad
+    const lastDate = last.rawDate || null;
+    gatOffsetDate = lastDate;
+  }
+
+  // Lagre oppdatert saldo til localStorage og Firebase
+  try {
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    ws.startSaldo = startSaldo;
+    localStorage.setItem('tt_work_settings', JSON.stringify(ws));
+    localStorage.setItem('tt_gat_offset', JSON.stringify({ offset: 0, date: gatOffsetDate }));
+  } catch(e) {}
+
+  if (!demoMode && db) {
+    const ws2 = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    colPath().doc('gat-settings').set({
+      type: 'settings',
+      hours: ws2.hours || WORK_HOURS_PER_DAY,
+      startDate: ws2.startDate || toDateKey(START_DATE),
+      startSaldo: startSaldo,
+      gatOffsetDate: gatOffsetDate || '',
+      notifMorning: ws2.notifMorning || '07:45',
+      notifEvening: ws2.notifEvening || '15:30'
+    }).catch(e => console.log(e));
+  }
+
   renderGatHistory();
+  renderAll();
+  renderMonthOverview();
 }
 
 // ─── Settings page ─────────────────────────────────────────────
@@ -2158,6 +2207,7 @@ async function saveUttak() {
   // Legg til i historikk
   gatHistory.push({
     date: dateStr,
+    rawDate: toDateKey(now),
     periodFrom: '–',
     periodTo: '–',
     minus: timer,
