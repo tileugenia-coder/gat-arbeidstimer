@@ -881,15 +881,8 @@
 <!-- GAT historikk-fane -->
 <div id="tab-gat" class="tab-page container">
   <div class="gat-history">
-    <div class="gat-history-header">Historikk-innleveringshistorikk</div>
-    <div class="gat-row head" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;">
-      <span>Dato</span>
-      <span>Periode</span>
-      <span>Ut av GAT</span>
-      <span>Inn i GAT</span>
-      <span>Banken i GAT</span>
-      <span></span>
-    </div>
+    <div class="gat-history-header">📋 GAT-historikk</div>
+
     <div id="gatHistoryList"><div class="gat-empty">Ingen innleveringer registrert ennå.</div></div>
   </div>
 </div>
@@ -1056,6 +1049,13 @@ function startApp() {
   }, 800);
   setInterval(tickActive, 1000);
   updateTodayLabel();
+  // Gjenopprett sist aktive fane
+  try {
+    const lastTab = localStorage.getItem('tt_active_tab');
+    if (lastTab && ['home','gat','month','settings'].includes(lastTab)) {
+      switchTab(lastTab);
+    }
+  } catch(e) {}
   loadGatHistory();
   applyWorkSettings();
 }
@@ -1818,6 +1818,8 @@ function switchTab(tab) {
   if (tab === 'gat') renderGatHistory();
   if (tab === 'settings') loadSettingsPage();
   if (tab === 'month') renderMonthOverview();
+  // Husk aktiv fane
+  try { localStorage.setItem('tt_active_tab', tab); } catch(e) {}
 }
 
 // ─── GAT History ───────────────────────────────────────────────
@@ -1867,7 +1869,10 @@ function renderGatHistory() {
     return;
   }
   container.innerHTML = '';
+  let totalMinus = 0, totalPlus = 0;
   [...gatHistory].reverse().forEach((entry, i) => {
+    totalMinus += entry.minus || 0;
+    totalPlus += entry.plus || 0;
     const idx = gatHistory.length - 1 - i;
     const row = document.createElement('div');
     row.className = 'gat-row';
@@ -1894,18 +1899,28 @@ function deleteGatEntry(idx) {
 
   // Beregn startSaldo og gatOffsetDate på nytt fra historikken
   if (gatHistory.length === 0) {
-    // Ingen historikk – tilbake til original startsaldo fra innstillinger
     const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
-    const origSaldo = parseFloat(ws.origStartSaldo || 0);
-    startSaldo = origSaldo;
+    startSaldo = parseFloat(ws.origStartSaldo || 0);
     gatOffsetDate = null;
   } else {
-    // Siste historikkrad bestemmer ny saldo og offsetdato
     const last = gatHistory[gatHistory.length - 1];
-    startSaldo = last.balance;
-    // Finn dato fra siste rad
-    const lastDate = last.rawDate || null;
-    gatOffsetDate = lastDate;
+    startSaldo = typeof last.balance === 'number' ? last.balance : 0;
+    // rawDate-fallback: prøv å parse fra date-streng hvis rawDate mangler
+    if (last.rawDate) {
+      gatOffsetDate = last.rawDate;
+    } else if (last.date) {
+      // Prøv å tolke "21. jun 2026" → "2026-06-21"
+      const mMap = {'jan':'01','feb':'02','mar':'03','apr':'04','mai':'05','jun':'06','jul':'07','aug':'08','sep':'09','okt':'10','nov':'11','des':'12'};
+      const m = last.date.match(/(\d+)\.\s+(\w+)\s+(\d{4})/);
+      if (m) {
+        const mo = mMap[m[2].toLowerCase()] || '01';
+        gatOffsetDate = `${m[3]}-${mo}-${String(m[1]).padStart(2,'0')}`;
+      } else {
+        gatOffsetDate = null;
+      }
+    } else {
+      gatOffsetDate = null;
+    }
   }
 
   // Lagre oppdatert saldo til localStorage og Firebase
