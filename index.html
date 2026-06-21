@@ -519,7 +519,7 @@
     <h1>Marias timeregistrering</h1>
   </div>
   <div style="display:flex;align-items:center;gap:6px;margin-top:5px;padding-left:2px;">
-    <div class="status-dot" id="statusDot" style="width:7px;height:7px;border-radius:50%;background:#854F0B;flex-shrink:0;"></div>
+    <div id="statusDot" style="width:7px;height:7px;border-radius:50%;background:#854F0B;flex-shrink:0;"></div>
     <span id="statusText" style="font-size:0.72rem;color:rgba(255,255,255,0.75);">Kobler til…</span>
   </div>
 </header>
@@ -1081,7 +1081,8 @@ function monthName(m) {
 }
 function setStatus(type, msg) {
   const dot = document.getElementById('statusDot');
-  dot.className = 'status-dot ' + type;
+  const colors = { online: '#3B6D11', offline: '#A32D2D', local: '#854F0B' };
+  dot.style.background = colors[type] || '#854F0B';
   document.getElementById('statusText').textContent = msg;
 }
 function showToast(msg) {
