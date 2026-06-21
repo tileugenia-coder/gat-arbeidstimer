@@ -1221,10 +1221,13 @@ function updateSummary() {
     d.setDate(d.getDate() + 1);
   }
 
-  const rawBalance = totalWorked - totalTarget + startSaldo;
-  const balance = rawBalance - gatOffset;
-  const minus = balance < 0 ? Math.abs(balance) : 0;
-  const plus = balance > 0 ? balance : 0;
+  // Periode-differanse (siden sist GAT-registrering, uten startsaldo)
+  const periodDiff = (totalWorked - totalTarget) - gatOffset;
+  const minus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
+  const plus = periodDiff > 0 ? periodDiff : 0;
+
+  // Banken = startsaldo + periode-differanse
+  const balance = startSaldo + periodDiff;
 
   document.getElementById('sumMinus').textContent = formatHours(minus);
   document.getElementById('sumPlus').textContent = formatHours(plus);
