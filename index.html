@@ -618,6 +618,45 @@
   .month-totals span { color: var(--gray-600); }
   .month-totals strong { color: var(--purple-900); }
 
+  /* Uttak-modal */
+  .uttak-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(76,29,149,0.35);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000; padding: 1rem;
+  }
+  .uttak-modal {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 1.25rem 1.5rem;
+    width: 100%; max-width: 340px;
+  }
+  .uttak-modal h3 { font-size: 1rem; font-weight: 600; color: var(--purple-900); margin-bottom: 0.5rem; }
+  .uttak-modal p { font-size: 0.8rem; color: var(--gray-600); margin-bottom: 1rem; }
+  .uttak-modal label { font-size: 0.78rem; color: var(--gray-600); display: block; margin-bottom: 3px; }
+  .uttak-modal input {
+    width: 100%; padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 1rem; color: var(--purple-900); background: var(--purple-50);
+    outline: none; margin-bottom: 1rem;
+  }
+  .uttak-modal input:focus { border-color: var(--purple-400); }
+  .uttak-modal .modal-actions { display: flex; gap: 8px; }
+  .btn-uttak-save {
+    flex: 1; padding: 0.65rem; background: var(--purple-600); color: white;
+    border: none; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  }
+  .btn-uttak-save:hover { background: var(--purple-800); }
+  .btn-uttak-cancel {
+    flex: 1; padding: 0.65rem; background: none; color: var(--gray-600);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem; cursor: pointer;
+  }
+  .btn-uttak-add {
+    width: 100%; padding: 0.85rem; background: var(--purple-50);
+    color: var(--purple-800); border: 1px solid var(--purple-200);
+    border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; margin-top: 4px;
+  }
+  .btn-uttak-add:hover { background: var(--purple-100); }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -833,6 +872,7 @@
     </div>
 
     <button class="btn-gat" onclick="lagtInnIGAT()">✓ Registrert i GAT</button>
+    <button class="btn-uttak-add" onclick="openUttakModal()">🏦 Ta ut timer fra banken</button>
 
   </div>
 </div>
@@ -914,6 +954,21 @@
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeEditModalBtn()">Avbryt</button>
       <button class="btn-modal-save" onclick="saveEdit()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<div class="uttak-modal-backdrop" id="uttakModal" style="display:none;">
+  <div class="uttak-modal">
+    <h3>🏦 Ta ut timer fra banken</h3>
+    <p>Skriv inn antall timer du tar ut. Bruk desimaltall: 1t 30min = 1.5</p>
+    <label>Timer å ta ut</label>
+    <input type="number" id="uttakTimer" step="0.25" min="0.25" placeholder="f.eks. 2.5" />
+    <label>Kommentar (valgfritt)</label>
+    <input type="text" id="uttakKommentar" placeholder="f.eks. Avspasering fredag" />
+    <div class="modal-actions">
+      <button class="btn-uttak-cancel" onclick="closeUttakModal()">Avbryt</button>
+      <button class="btn-uttak-save" onclick="saveUttak()">Ta ut</button>
     </div>
   </div>
 </div>
@@ -1079,6 +1134,7 @@ async function loadAllEntries() {
         if (d.hours) WORK_HOURS_PER_DAY = d.hours;
         if (d.startDate) { const [y,m,dd] = d.startDate.split('-').map(Number); START_DATE = new Date(y,m-1,dd); }
         if (d.startSaldo !== undefined) { startSaldo = parseFloat(d.startSaldo) || 0; try { const ws = JSON.parse(localStorage.getItem('tt_work_settings')||'{}'); ws.startSaldo = startSaldo; localStorage.setItem('tt_work_settings', JSON.stringify(ws)); } catch(e) {} }
+        if (d.gatOffsetDate) { gatOffsetDate = d.gatOffsetDate; try { localStorage.setItem('tt_gat_offset', JSON.stringify({offset: 0, date: gatOffsetDate})); } catch(e) {} }
         if (d.notifMorning) try { localStorage.setItem('tt_notif_settings', JSON.stringify({morning: d.notifMorning, evening: d.notifEvening})); } catch(e) {}
       } else {
         if (!allEntries[d.dateKey]) allEntries[d.dateKey] = [];
@@ -1608,12 +1664,11 @@ function lagtInnIGAT() {
       hours: ws2.hours || WORK_HOURS_PER_DAY,
       startDate: ws2.startDate || toDateKey(START_DATE),
       startSaldo: newBalance,
+      gatOffsetDate: gatOffsetDate || '',
       notifMorning: ws2.notifMorning || '07:45',
       notifEvening: ws2.notifEvening || '15:30'
     }).catch(e => console.log(e));
-    colPath().doc('gat-offset').set({
-      type: 'gat_offset', offset: 0, date: gatOffsetDate
-    }).catch(e => console.log(e));
+
   }
 
   renderAll();
@@ -2072,6 +2127,70 @@ async function installPWA() {
   const result = await deferredInstallPrompt.userChoice;
   if (result.outcome === 'accepted') showToast('App installert!');
   deferredInstallPrompt = null;
+}
+
+// ─── Manuelt uttak fra banken ─────────────────────────────────
+function openUttakModal() {
+  document.getElementById('uttakTimer').value = '';
+  document.getElementById('uttakKommentar').value = '';
+  document.getElementById('uttakModal').style.display = 'flex';
+}
+
+function closeUttakModal() {
+  document.getElementById('uttakModal').style.display = 'none';
+}
+
+async function saveUttak() {
+  const timer = parseFloat(document.getElementById('uttakTimer').value);
+  const kommentar = document.getElementById('uttakKommentar').value.trim();
+
+  if (isNaN(timer) || timer <= 0) { showToast('Skriv inn antall timer'); return; }
+  if (timer > startSaldo) {
+    if (!confirm('Du tar ut mer enn banken har (' + formatHours(startSaldo) + 't). Fortsette?')) return;
+  }
+
+  const now = new Date();
+  const nyBank = startSaldo - timer;
+  const dateStr = now.getDate() + '. ' + monthName(now.getMonth()) + ' ' + now.getFullYear();
+
+  // Legg til i historikk
+  gatHistory.push({
+    date: dateStr,
+    periodFrom: '–',
+    periodTo: '–',
+    minus: timer,
+    plus: 0,
+    balance: nyBank,
+    kommentar: kommentar || 'Manuelt uttak'
+  });
+  saveGatHistory();
+
+  // Oppdater startsaldo
+  startSaldo = nyBank;
+  try {
+    const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    ws.startSaldo = nyBank;
+    localStorage.setItem('tt_work_settings', JSON.stringify(ws));
+  } catch(e) {}
+
+  // Sync til Firebase
+  if (!demoMode && db) {
+    const ws2 = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
+    colPath().doc('gat-settings').set({
+      type: 'settings',
+      hours: ws2.hours || WORK_HOURS_PER_DAY,
+      startDate: ws2.startDate || toDateKey(START_DATE),
+      startSaldo: nyBank,
+      gatOffsetDate: gatOffsetDate || '',
+      notifMorning: ws2.notifMorning || '07:45',
+      notifEvening: ws2.notifEvening || '15:30'
+    }).catch(e => console.log(e));
+  }
+
+  document.getElementById('uttakModal').style.display = 'none';
+  renderAll();
+  renderGatHistory();
+  showToast('Tatt ut ' + formatHours(timer) + 't. Ny bank: ' + (nyBank >= 0 ? '+' : '') + formatHours(nyBank));
 }
 
 // ─── Boot ─────────────────────────────────────────────────────
