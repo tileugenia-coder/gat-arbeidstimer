@@ -1209,8 +1209,14 @@ function updateSummary() {
   const now = new Date();
   const todayKey = toDateKey(now);
 
-  // Beregn kun fra sist GAT-registrering (eller START_DATE)
-  const periodStart = gatOffsetDate ? new Date(gatOffsetDate) : new Date(START_DATE);
+  // Beregn kun fra dagen ETTER sist GAT-registrering (eller START_DATE)
+  let periodStart;
+  if (gatOffsetDate) {
+    periodStart = new Date(gatOffsetDate);
+    periodStart.setDate(periodStart.getDate() + 1);
+  } else {
+    periodStart = new Date(START_DATE);
+  }
   const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
@@ -1530,9 +1536,15 @@ function lagtInnIGAT() {
   const now = new Date();
   const todayKey = toDateKey(now);
 
-  // Beregn kun fra sist GAT-registrering (eller START_DATE)
+  // Beregn kun fra dagen ETTER sist GAT-registrering (eller START_DATE)
   let totalWorked = 0, totalTarget = 0;
-  const periodStart = gatOffsetDate ? new Date(gatOffsetDate) : new Date(START_DATE);
+  let periodStart;
+  if (gatOffsetDate) {
+    periodStart = new Date(gatOffsetDate);
+    periodStart.setDate(periodStart.getDate() + 1);
+  } else {
+    periodStart = new Date(START_DATE);
+  }
   const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
@@ -1591,7 +1603,7 @@ function lagtInnIGAT() {
   // Sync til Firebase
   if (!demoMode && db) {
     const ws2 = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
-    colPath().doc('__settings__').set({
+    colPath().doc('gat-settings').set({
       type: 'settings',
       hours: ws2.hours || WORK_HOURS_PER_DAY,
       startDate: ws2.startDate || toDateKey(START_DATE),
@@ -1599,7 +1611,7 @@ function lagtInnIGAT() {
       notifMorning: ws2.notifMorning || '07:45',
       notifEvening: ws2.notifEvening || '15:30'
     }).catch(e => console.log(e));
-    colPath().doc('__gat_offset__').set({
+    colPath().doc('gat-offset').set({
       type: 'gat_offset', offset: 0, date: gatOffsetDate
     }).catch(e => console.log(e));
   }
@@ -1778,7 +1790,7 @@ function loadGatHistory() {
 function saveGatHistory() {
   try { localStorage.setItem('tt_gat_history', JSON.stringify(gatHistory)); } catch(e) {}
   if (!demoMode && db) {
-    colPath().doc('__gat_history__').set({type: 'gat_history', history: gatHistory}).catch(e => console.log(e));
+    colPath().doc('gat-history').set({type: 'gat_history', history: gatHistory}).catch(e => console.log(e));
   }
 }
 
@@ -1836,7 +1848,7 @@ function saveNotifSettings() {
   // Sync to Firebase
   if (!demoMode && db) {
     const ws = JSON.parse(localStorage.getItem('tt_work_settings') || '{}');
-    colPath().doc('__settings__').set({
+    colPath().doc('gat-settings').set({
       type: 'settings',
       hours: ws.hours || 7.5,
       startDate: ws.startDate || '2026-06-15',
@@ -1863,7 +1875,7 @@ function saveWorkSettings() {
   }
   if (!demoMode && db) {
     const ns = JSON.parse(localStorage.getItem('tt_notif_settings') || '{}');
-    colPath().doc('__settings__').set({
+    colPath().doc('gat-settings').set({
       type: 'settings', hours, startDate,
       startSaldo: startSaldoVal,
       notifMorning: ns.morning || '07:45', notifEvening: ns.evening || '15:30'
