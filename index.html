@@ -1560,11 +1560,11 @@ function lagtInnIGAT() {
   if (!confirm(confirmMsg)) return;
 
   // Lagre til historikk
-  const dateStr = now.getDate() + '. ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+  const dateStr = now.getDate() + '. ' + monthName(now.getMonth()) + ' ' + now.getFullYear();
   const periodFrom = gatPeriodStart || toDateKey(START_DATE);
   const periodFromDate = new Date(periodFrom);
-  const periodFromStr = periodFromDate.getDate() + '. ' + MONTHS[periodFromDate.getMonth()];
-  const periodToStr = now.getDate() + '. ' + MONTHS[now.getMonth()];
+  const periodFromStr = periodFromDate.getDate() + '. ' + monthName(periodFromDate.getMonth());
+  const periodToStr = now.getDate() + '. ' + monthName(now.getMonth());
   gatHistory.push({
     date: dateStr,
     periodFrom: periodFromStr,
