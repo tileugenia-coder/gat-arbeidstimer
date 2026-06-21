@@ -778,31 +778,6 @@
 
 <div class="container">
 
-  <!-- Config panel (hidden when configured) -->
-  <div class="config-panel" id="configPanel" style="display:none;">
-    <h2>🔧 Koble til Firebase</h2>
-    <div class="setup-steps">
-      <strong>Slik setter du opp (én gang):</strong><br>
-      1. Gå til <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
-      2. Opprett prosjekt → Firestore Database → Start i testmodus<br>
-      3. Prosjektinnstillinger → Dine apper → Web-app (legg til)<br>
-      4. Kopier verdiene fra <code>firebaseConfig</code> nedenfor<br>
-      5. Lim inn API-nøkkel og prosjekt-ID her, og lagre
-    </div>
-    <p>API-nøkkel (<code>apiKey</code>):</p>
-    <input type="text" id="cfgApiKey" placeholder="AIzaSy..." />
-    <p>Prosjekt-ID (<code>projectId</code>):</p>
-    <input type="text" id="cfgProjectId" placeholder="mitt-prosjekt-12345" />
-    <p>Bruker-ID (valgfritt, for å skille mellom brukere):</p>
-    <input type="text" id="cfgUserId" placeholder="bruker1" value="default" />
-    <button class="btn-primary" onclick="saveConfig()">Lagre og koble til</button>
-    <div style="margin-top:10px; text-align:center;">
-      <button onclick="useDemoMode()" style="background:none;border:none;color:var(--purple-600);cursor:pointer;font-size:0.82rem;text-decoration:underline;">
-        Bruk lokal demo-modus (ingen skylagring)
-      </button>
-    </div>
-  </div>
-
   <!-- Main app (shown when configured) -->
   <div id="tab-home" class="tab-page active">
   <div id="mainApp" style="display:block;">
@@ -973,22 +948,11 @@ let currentWeekOffset = 0;
 
 // ─── Config / Init ────────────────────────────────────────────
 function loadConfig() {
-  const cfg = JSON.parse(localStorage.getItem('tt_config') || '{}');
-  if (cfg.apiKey && cfg.projectId) {
-    document.getElementById('cfgApiKey').value = cfg.apiKey;
-    document.getElementById('cfgProjectId').value = cfg.projectId;
-    document.getElementById('cfgUserId').value = cfg.userId || 'default';
-  }
-  return cfg;
+  return JSON.parse(localStorage.getItem('tt_config') || '{}');
 }
 
 function saveConfig() {
-  const apiKey = document.getElementById('cfgApiKey').value.trim();
-  const projectId = document.getElementById('cfgProjectId').value.trim();
-  const uid = document.getElementById('cfgUserId').value.trim() || 'default';
-  if (!apiKey || !projectId) { showToast('Fyll inn API-nøkkel og prosjekt-ID'); return; }
-  localStorage.setItem('tt_config', JSON.stringify({apiKey, projectId, userId: uid}));
-  initFirebase(apiKey, projectId, uid);
+  // Konfigurasjon er hardkodet
 }
 
 function useDemoMode() {
@@ -1026,10 +990,10 @@ function initFirebase(apiKey, projectId, uid) {
 }
 
 function startApp() {
-  document.getElementById('configPanel').style.display = 'none';
+  
   document.getElementById('mainApp').style.display = 'block';
   if (demoMode) setStatus('local', 'Lokal modus (ingen skylagring)');
-  setTimeout(populateFirebasePanel, 100);
+
   loadAllEntries();
   setTimeout(() => {
     const splash = document.getElementById('splashScreen');
@@ -1606,37 +1570,7 @@ function lagtInnIGAT() {
   showToast('GAT oppdatert – saldo nullstilt');
 }
 
-function toggleFirebasePanel() {
-  const header = document.getElementById('firebasePanelHeader');
-  const body = document.getElementById('firebasePanelBody');
-  const chevron = document.getElementById('firebaseChevron');
-  header.classList.toggle('open');
-  body.classList.toggle('open');
-}
-
-function saveFirebaseConfig() {
-  const apiKey = document.getElementById('fbApiKey').value.trim();
-  const projectId = document.getElementById('fbProjectId').value.trim();
-  const authDomain = document.getElementById('fbAuthDomain').value.trim();
-  const uid = document.getElementById('fbUserId').value.trim() || 'default';
-  if (!apiKey || !projectId) { showToast('Fyll inn API-nøkkel og prosjekt-ID'); return; }
-  try {
-    localStorage.setItem('tt_config', JSON.stringify({apiKey, projectId, userId: uid}));
-  } catch(e) {}
-  // Close panel
-  document.getElementById('firebasePanelHeader').classList.remove('open');
-  document.getElementById('firebasePanelBody').classList.remove('open');
-  initFirebase(apiKey, projectId, uid);
-  showToast('Firebase-konfigurasjon lagret');
-}
-
-function populateFirebasePanel() {
-  // Pre-fill with current config if available
-  const cfg = JSON.parse(localStorage.getItem('tt_config') || '{}');
-  if (cfg.apiKey) document.getElementById('fbApiKey').value = cfg.apiKey;
-  if (cfg.projectId) document.getElementById('fbProjectId').value = cfg.projectId;
-  if (cfg.userId) document.getElementById('fbUserId').value = cfg.userId;
-}
+// Firebase panel fjernet - konfigurasjon er hardkodet
 
 async function resetAllData() {
   if (!confirm('Dette sletter alle registreringer og laster inn forhåndsdata for uke 25. Fortsette?')) return;
@@ -1762,12 +1696,12 @@ function scheduleNotifications() {
 
 // ─── Tab navigation ───────────────────────────────────────────
 function switchTab(tab) {
-  ['home','month','gat','settings'].forEach(t => {
+  ['home','gat','month','settings'].forEach(t => {
     const page = document.getElementById('tab-' + t);
     if (page) page.classList.toggle('active', t === tab);
   });
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    const tabs = ['home','month','gat','settings'];
+    const tabs = ['home','gat','month','settings'];
     btn.classList.toggle('active', tabs[i] === tab);
   });
   if (tab === 'gat') renderGatHistory();
@@ -2078,6 +2012,19 @@ async function installPWA() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────
+// Fix tab-nav position dynamically based on header height
+document.addEventListener('DOMContentLoaded', function() {
+  function fixTabNav() {
+    const header = document.querySelector('header');
+    const tabNav = document.querySelector('.tab-nav');
+    if (header && tabNav) {
+      tabNav.style.top = header.offsetHeight + 'px';
+    }
+  }
+  fixTabNav();
+  window.addEventListener('resize', fixTabNav);
+});
+
 // Set today label immediately before Firebase loads
 (function() {
   const DAY_NAMES_INIT = ['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
