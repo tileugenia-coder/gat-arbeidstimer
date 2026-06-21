@@ -1708,6 +1708,8 @@ async function resetAllData() {
   gatOffsetDate = null;
   gatHistory = [];
   dayAbsence = {};
+  startSaldo = 0;
+  try { localStorage.removeItem('tt_work_settings'); } catch(e) {}
 
   document.getElementById('btnStop').disabled = true;
   document.getElementById('btnStart').disabled = false;
