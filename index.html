@@ -88,6 +88,9 @@
     display: flex;
     background: var(--purple-900);
     border-bottom: 2px solid var(--purple-800);
+    position: sticky;
+    top: 0;
+    z-index: 99;
   }
   .tab-btn {
     flex: 1;
@@ -1048,19 +1051,28 @@ async function loadAllEntries() {
           ['2026-06-18', '08:00', '15:30'],
           ['2026-06-19', '08:00', '15:30'],
         ];
+        const prefillEntries = [];
         prefill.forEach(([dk, startT, endT]) => {
           const [sh, sm] = startT.split(':').map(Number);
           const [eh, em] = endT.split(':').map(Number);
           const [y, mo, d] = dk.split('-').map(Number);
           const startD = new Date(y, mo-1, d, sh, sm, 0);
           const endD = new Date(y, mo-1, d, eh, em, 0);
-          allEntries[dk] = [{
+          const entry = {
             id: dk + '_prefill',
             start: startD.toISOString(),
             end: endD.toISOString()
-          }];
+          };
+          allEntries[dk] = [entry];
+          prefillEntries.push({dk, entry});
         });
         localStorage.setItem('tt_entries_local', JSON.stringify(allEntries));
+        // Save prefill to Firebase too
+        if (!demoMode && db) {
+          prefillEntries.forEach(({dk, entry}) => {
+            colPath().doc(entry.id).set({dateKey: dk, start: entry.start, end: entry.end}).catch(e => {});
+          });
+        }
       }
       const savedAbsence = localStorage.getItem('tt_absence_local');
       if (savedAbsence) dayAbsence = JSON.parse(savedAbsence);
@@ -1620,9 +1632,9 @@ async function resetAllData() {
   if (!demoMode && db) {
     try {
       const snap = await colPath().get();
-      const batch = db.batch();
-      snap.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
+      const deletes = [];
+      snap.forEach(doc => deletes.push(doc.ref.delete()));
+      await Promise.all(deletes);
     } catch(e) { console.log('Firebase slett feil:', e); }
   }
 
