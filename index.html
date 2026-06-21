@@ -89,7 +89,7 @@
     background: var(--purple-900);
     border-bottom: 2px solid var(--purple-800);
     position: sticky;
-    top: 0;
+    top: 62px;
     z-index: 99;
   }
   .tab-btn {
@@ -1628,6 +1628,8 @@ function populateFirebasePanel() {
 async function resetAllData() {
   if (!confirm('Dette sletter alle registreringer og laster inn forhåndsdata for uke 25. Fortsette?')) return;
 
+  showToast('Sletter data…');
+
   // Slett fra Firebase
   if (!demoMode && db) {
     try {
@@ -1657,8 +1659,34 @@ async function resetAllData() {
   document.getElementById('btnStop').disabled = true;
   document.getElementById('btnStart').disabled = false;
   document.getElementById('activeSession').style.display = 'none';
-  loadAllEntries();
-  showToast('Data nullstilt');
+
+  // Direkte forhåndsregistrer uten å gå via loadAllEntries
+  await prefillWeek25();
+  renderAll();
+  showToast('Data nullstilt – uke 25 lastet inn');
+}
+
+async function prefillWeek25() {
+  const prefill = [
+    ['2026-06-15', '08:00', '15:30'],
+    ['2026-06-16', '08:00', '15:30'],
+    ['2026-06-17', '08:00', '15:30'],
+    ['2026-06-18', '08:00', '15:30'],
+    ['2026-06-19', '08:00', '15:30'],
+  ];
+  for (const [dk, startT, endT] of prefill) {
+    const [sh, sm] = startT.split(':').map(Number);
+    const [eh, em] = endT.split(':').map(Number);
+    const [y, mo, d] = dk.split('-').map(Number);
+    const startD = new Date(y, mo-1, d, sh, sm, 0);
+    const endD = new Date(y, mo-1, d, eh, em, 0);
+    const entry = { id: dk + '_prefill', start: startD.toISOString(), end: endD.toISOString() };
+    allEntries[dk] = [entry];
+    if (!demoMode && db) {
+      await colPath().doc(entry.id).set({dateKey: dk, start: entry.start, end: entry.end}).catch(e => {});
+    }
+  }
+  try { localStorage.setItem('tt_entries_local', JSON.stringify(allEntries)); } catch(e) {}
 }
 
 // ─── Push-varsler ─────────────────────────────────────────────
