@@ -1170,17 +1170,21 @@ async function loadAllEntries() {
         if (d.startSaldo !== undefined) { startSaldo = parseFloat(d.startSaldo) || 0; try { const ws = JSON.parse(localStorage.getItem('tt_work_settings')||'{}'); ws.startSaldo = startSaldo; localStorage.setItem('tt_work_settings', JSON.stringify(ws)); } catch(e) {} }
         if (d.gatOffsetDate) { gatOffsetDate = d.gatOffsetDate; try { localStorage.setItem('tt_gat_offset', JSON.stringify({offset: 0, date: gatOffsetDate})); } catch(e) {} }
         if (d.notifMorning) try { localStorage.setItem('tt_notif_settings', JSON.stringify({morning: d.notifMorning, evening: d.notifEvening})); } catch(e) {}
-      } else {
+      } else if (d.dateKey && d.start) {
         if (!allEntries[d.dateKey]) allEntries[d.dateKey] = [];
         allEntries[d.dateKey].push({id: doc.id, start: d.start, end: d.end || null});
       }
     });
-    const active = Object.values(allEntries).flat().find(e => !e.end);
+    const active = Object.values(allEntries).flat().find(e => !e.end && e.start && !isNaN(new Date(e.start).getTime()));
     if (active) {
       const dk = Object.keys(allEntries).find(k => allEntries[k].some(e => e.id === active.id));
       activeEntry = {dateKey: dk, id: active.id, start: active.start};
       document.getElementById('btnStop').disabled = false;
       document.getElementById('btnStart').disabled = true;
+    } else {
+      activeEntry = null;
+      document.getElementById('btnStop').disabled = true;
+      document.getElementById('btnStart').disabled = false;
     }
     // Ingen entries? Kjør prefill
     if (Object.keys(allEntries).length === 0) {
@@ -1581,9 +1585,17 @@ function toggleAbsence(dk, type) {
 }
 
 function tickActive() {
-  if (!activeEntry) return;
+  if (!activeEntry || !activeEntry.start) return;
   const now = new Date();
   const start = new Date(activeEntry.start);
+  if (isNaN(start.getTime())) {
+    // Ugyldig data – rydd opp
+    activeEntry = null;
+    document.getElementById('activeSession').style.display = 'none';
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('btnStart').disabled = false;
+    return;
+  }
   const diffSec = Math.floor((now - start) / 1000);
   const h = Math.floor(diffSec / 3600);
   const m = Math.floor((diffSec % 3600) / 60);
