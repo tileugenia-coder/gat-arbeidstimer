@@ -1446,7 +1446,7 @@ function renderDayCard(date, now) {
       <span class="day-date">${date.getDate()}. ${monthName(date.getMonth())}</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      ${worked > 0 ? `<span style="font-size:0.8rem;color:var(--gray-600)">${formatHours(worked)}t</span>` : ''}
+      ${worked > 0 ? `<span style="font-size:0.8rem;color:var(--gray-600)">${formatHours(worked)}</span>` : ''}
       <span class="day-badge ${badgeClass}">${badgeText}</span>
     </div>`;
   card.appendChild(header);
@@ -1464,7 +1464,7 @@ function renderDayCard(date, now) {
       row.innerHTML = `
         <span class="entry-times ${isActive ? 'entry-active' : ''}">
           ${formatTime(start)} – ${isActive ? 'pågår…' : formatTime(new Date(e.end))}
-          <span class="entry-dur">(${formatHours(dur)}t)</span>
+          <span class="entry-dur">(${formatHours(dur)})</span>
         </span>
         <span style="display:flex;align-items:center;gap:2px;">
           <button class="entry-edit" onclick="openEditModal('${dk}','${e.id}')">Rediger</button>
@@ -2216,15 +2216,15 @@ function renderMonthOverview() {
       <div class="month-header" onclick="toggleMonth('${mk}')">
         <span class="month-title">${MONTH_NAMES[m.month]} ${m.year}</span>
         <div class="month-summary">
-          <span style="font-size:0.78rem;color:var(--gray-600)">${formatHours(mWorked)}t jobbet</span>
+          <span style="font-size:0.78rem;color:var(--gray-600)">${formatHours(mWorked)} jobbet</span>
           <span class="badge ${balClass}">${balSign}${formatHours(Math.abs(mBalance))}</span>
         </div>
       </div>
       <div class="month-body" id="month-${mk}">
         ${renderMonthGrid(m.days, now)}
         <div class="month-totals">
-          <span>Jobbet: <strong>${formatHours(mWorked)}t</strong></span>
-          <span>Mål: <strong>${formatHours(mTarget)}t</strong></span>
+          <span>Jobbet: <strong>${formatHours(mWorked)}</strong></span>
+          <span>Mål: <strong>${formatHours(mTarget)}</strong></span>
           <span>Banken i GAT: <strong style="color:${mBalance>=0?'var(--green-600)':'var(--red-600)'}">${balSign}${formatHours(Math.abs(mBalance))}</strong></span>
           ${mAbsence > 0 ? `<span>Fravær: <strong>${mAbsence} dager</strong></span>` : ''}
         </div>
