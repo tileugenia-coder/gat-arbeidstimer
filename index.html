@@ -413,22 +413,24 @@
   .badge-ferie { background: #E0F2FE; color: #0369A1; }
   .badge-syk { background: #FEF3C7; color: #92400E; }
   .badge-helligdag { background: var(--amber-50); color: var(--amber-600); }
+  .badge-studiedag { background: #DCFCE7; color: #166534; }
   .badge-avspasering { background: #E0E7FF; color: #4338CA; }
   .absence-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 7px 14px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-top: 1px solid var(--border);
     font-size: 0.8rem; flex-wrap: wrap;
   }
   .absence-row span { color: var(--gray-600); }
   .absence-btn {
-    padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border);
-    font-size: 0.75rem; cursor: pointer; background: var(--gray-50); color: var(--gray-600);
-    font-weight: 500;
+    padding: 2px 7px; border-radius: 20px; border: 1px solid var(--border);
+    font-size: 0.7rem; cursor: pointer; background: var(--gray-50); color: var(--gray-600);
+    font-weight: 500; white-space: nowrap;
   }
   .absence-btn:hover { background: var(--purple-50); border-color: var(--purple-200); }
   .absence-btn.active-ferie { background: #E0F2FE; color: #0369A1; border-color: #BAE6FD; }
   .absence-btn.active-syk { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
   .absence-btn.active-helligdag { background: var(--amber-50); color: var(--amber-600); border-color: #FCD34D; }
+  .absence-btn.active-studiedag { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
   .absence-btn.active-avspasering { background: #E0E7FF; color: #4338CA; border-color: #C7D2FE; }
 
   .day-entries { border-top: 1px solid var(--border); }
@@ -1011,7 +1013,7 @@ let allEntries = {}; // { "2026-06-22": [{id, start, end}] }
 let dayAbsence = {}; // { "2026-06-22": 'ferie'|'syk'|'helligdag'|'avspasering' }
 let dayAvspaseringTimer = {}; // { "2026-06-22": antall timer avspasert (overstyrer full dag) }
 let avspaseringTarget = null;
-const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag', avspasering: '🛋️ Avspasering' };
+const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag', avspasering: '🛋️ Avspasering', studiedag: '📚 Studiedag' };
 let gatOffset = 0; // saldo-justement etter "Lagt inn i GAT"
 let startSaldo = 0; // timer i banken før appens startdato
 let gatOffsetDate = null; // dato for siste GAT-innlevering
@@ -1347,9 +1349,10 @@ function updateSummary() {
   const balCard = document.getElementById('balanceCard');
   balCard.className = 'summary-card ' + (balance >= 0 ? 'card-balance-positive' : 'card-balance-negative');
 
-  // This week
+  // This week – fast mål på 5 dager × normtid, ferie/syk/helligdag teller som fullført
   const weekStart = getWeekStart(now);
-  let weekWorked = 0, weekTarget = 0;
+  let weekWorked = 0;
+  const weekTarget = WORK_HOURS_PER_DAY * 5; // alltid 37,5t (fast ukemål)
   for (let i = 0; i < 7; i++) {
     const wd = new Date(weekStart);
     wd.setDate(wd.getDate() + i);
@@ -1358,8 +1361,12 @@ function updateSummary() {
     const dow = wd.getDay();
     const wAbs = dayAbsence[dk];
     const wFullDayAbsence = wAbs && wAbs !== 'avspasering';
-    weekWorked += getWorkedHours(dk, now);
-    if (dow !== 0 && dow !== 6 && !wFullDayAbsence) weekTarget += WORK_HOURS_PER_DAY;
+    if (dow !== 0 && dow !== 6 && wFullDayAbsence) {
+      // Ferie/syk/helligdag teller som fullført normtid mot ukemålet
+      weekWorked += WORK_HOURS_PER_DAY;
+    } else {
+      weekWorked += getWorkedHours(dk, now);
+    }
   }
   document.getElementById('sumWeek').textContent = formatHours(weekWorked);
   document.getElementById('weekTarget').textContent = formatHours(weekTarget);
@@ -1417,6 +1424,7 @@ function renderDayCard(date, now) {
   else if (absence === 'ferie') { badgeClass = 'badge-ferie'; badgeText = '🏖 Ferie'; }
   else if (absence === 'syk') { badgeClass = 'badge-syk'; badgeText = '🤒 Syk'; }
   else if (absence === 'helligdag') { badgeClass = 'badge-helligdag'; badgeText = '🎉 Helligdag'; }
+  else if (absence === 'studiedag') { badgeClass = 'badge-studiedag'; badgeText = '📚 Studiedag'; }
   else if (absence === 'avspasering') {
     badgeClass = 'badge-avspasering';
     const avspTimer = dayAvspaseringTimer[dk] !== undefined ? dayAvspaseringTimer[dk] : WORK_HOURS_PER_DAY;
@@ -1471,8 +1479,8 @@ function renderDayCard(date, now) {
   if (isWeekend) return card;
   const absRow = document.createElement('div');
   absRow.className = 'absence-row';
-  absRow.innerHTML = '<span>Dagtype:</span>';
-  ['ferie','syk','helligdag','avspasering'].forEach(type => {
+  absRow.innerHTML = '';
+  ['ferie','syk','helligdag','studiedag','avspasering'].forEach(type => {
     const btn = document.createElement('button');
     btn.className = 'absence-btn' + (dayAbsence[dk] === type ? ' active-' + type : '');
     btn.textContent = ABSENCE_LABELS[type];
