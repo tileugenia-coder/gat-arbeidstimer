@@ -413,6 +413,7 @@
   .badge-ferie { background: #E0F2FE; color: #0369A1; }
   .badge-syk { background: #FEF3C7; color: #92400E; }
   .badge-helligdag { background: var(--amber-50); color: var(--amber-600); }
+  .badge-avspasering { background: #E0E7FF; color: #4338CA; }
   .absence-row {
     display: flex; align-items: center; gap: 8px;
     padding: 7px 14px; border-top: 1px solid var(--border);
@@ -428,6 +429,7 @@
   .absence-btn.active-ferie { background: #E0F2FE; color: #0369A1; border-color: #BAE6FD; }
   .absence-btn.active-syk { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
   .absence-btn.active-helligdag { background: var(--amber-50); color: var(--amber-600); border-color: #FCD34D; }
+  .absence-btn.active-avspasering { background: #E0E7FF; color: #4338CA; border-color: #C7D2FE; }
 
   .day-entries { border-top: 1px solid var(--border); }
   .entry-row {
@@ -867,7 +869,7 @@
       <div class="summary-card card-week">
         <div class="label">📅 Denne uken</div>
         <div class="value" id="sumWeek">–</div>
-        <div class="sub">av <span id="weekTarget">–</span> t mål</div>
+        <div class="sub">av <span id="weekTarget">–</span> mål</div>
       </div>
     </div>
 
@@ -966,6 +968,27 @@
   </div>
 </div>
 
+<div class="uttak-modal-backdrop" id="avspaseringModal" style="display:none;">
+  <div class="uttak-modal">
+    <h3>🛋️ Juster avspasering</h3>
+    <p>Endre hvor mange timer som er avspasert denne dagen. Differansen justeres automatisk i Banken i GAT.</p>
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;">
+        <label>Timer</label>
+        <input type="number" id="avspaseringHours" min="0" max="23" placeholder="0" />
+      </div>
+      <div style="flex:1;">
+        <label>Minutter</label>
+        <input type="number" id="avspaseringMinutes" min="0" max="59" step="5" placeholder="0" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-uttak-cancel" onclick="closeAvspaseringModal()">Avbryt</button>
+      <button class="btn-uttak-save" onclick="saveAvspaseringTimer()">Lagre</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- Firebase SDK -->
@@ -985,8 +1008,10 @@ let db = null;
 let userId = 'default';
 let demoMode = false;
 let allEntries = {}; // { "2026-06-22": [{id, start, end}] }
-let dayAbsence = {}; // { "2026-06-22": 'ferie'|'syk'|'helligdag' }
-const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag' };
+let dayAbsence = {}; // { "2026-06-22": 'ferie'|'syk'|'helligdag'|'avspasering' }
+let dayAvspaseringTimer = {}; // { "2026-06-22": antall timer avspasert (overstyrer full dag) }
+let avspaseringTarget = null;
+const ABSENCE_LABELS = { ferie: '🏖 Ferie', syk: '🤒 Syk', helligdag: '🎉 Helligdag', avspasering: '🛋️ Avspasering' };
 let gatOffset = 0; // saldo-justement etter "Lagt inn i GAT"
 let startSaldo = 0; // timer i banken før appens startdato
 let gatOffsetDate = null; // dato for siste GAT-innlevering
@@ -1105,6 +1130,8 @@ async function loadAllEntries() {
       }
       const savedAbsence = localStorage.getItem('tt_absence_local');
       if (savedAbsence) dayAbsence = JSON.parse(savedAbsence);
+      const savedAvspasering = localStorage.getItem('tt_avspasering_local');
+      if (savedAvspasering) dayAvspaseringTimer = JSON.parse(savedAvspasering);
       const savedActive = localStorage.getItem('tt_active_local');
       if (savedActive) {
         activeEntry = JSON.parse(savedActive);
@@ -1133,6 +1160,8 @@ async function loadAllEntries() {
       const d = doc.data();
       if (d.type === 'absence') {
         dayAbsence[d.dateKey] = d.absenceType;
+      } else if (d.type === 'avspasering_timer') {
+        dayAvspaseringTimer[d.dateKey] = d.timer;
       } else if (d.type === 'gat_history') {
         gatHistory = d.history || [];
       } else if (d.type === 'settings') {
@@ -1284,20 +1313,23 @@ function updateSummary() {
   } else {
     periodStart = new Date(START_DATE);
   }
+  let totalAvspasering = 0;
   const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
     const dow = d.getDay();
     const isWeekend = (dow === 0 || dow === 6);
     const abs = dayAbsence[dk];
+    const fullDayAbsence = abs && abs !== 'avspasering'; // ferie/syk/helligdag nuller normtiden, avspasering gjør ikke
     const worked = getWorkedHours(dk, now);
     totalWorked += worked;
-    if (!isWeekend && !abs) totalTarget += WORK_HOURS_PER_DAY;
+    if (!isWeekend && !fullDayAbsence) totalTarget += WORK_HOURS_PER_DAY;
+    if (abs === 'avspasering') totalAvspasering += getAvspaseringHours(dk);
     d.setDate(d.getDate() + 1);
   }
 
-  // Periode-differanse siden sist GAT-registrering
-  const periodDiff = totalWorked - totalTarget;
+  // Periode-differanse siden sist GAT-registrering (avspaserte timer trekkes som om de var fravær fra jobb)
+  const periodDiff = totalWorked - totalTarget - totalAvspasering;
   const minus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
   const plus = periodDiff > 0 ? periodDiff : 0;
 
@@ -1324,7 +1356,7 @@ function updateSummary() {
     if (dow !== 0 && dow !== 6) weekTarget += WORK_HOURS_PER_DAY;
   }
   document.getElementById('sumWeek').textContent = formatHours(weekWorked);
-  document.getElementById('weekTarget').textContent = weekTarget.toFixed(2).replace('.',',');
+  document.getElementById('weekTarget').textContent = formatHours(weekTarget);
 }
 
 function renderWeek() {
@@ -1379,6 +1411,13 @@ function renderDayCard(date, now) {
   else if (absence === 'ferie') { badgeClass = 'badge-ferie'; badgeText = '🏖 Ferie'; }
   else if (absence === 'syk') { badgeClass = 'badge-syk'; badgeText = '🤒 Syk'; }
   else if (absence === 'helligdag') { badgeClass = 'badge-helligdag'; badgeText = '🎉 Helligdag'; }
+  else if (absence === 'avspasering') {
+    badgeClass = 'badge-avspasering';
+    const avspTimer = dayAvspaseringTimer[dk] !== undefined ? dayAvspaseringTimer[dk] : WORK_HOURS_PER_DAY;
+    badgeText = worked > 0
+      ? `🛋️ ${formatHours(avspTimer)} + ${formatHours(worked)} jobbet`
+      : `🛋️ Avspasering ${formatHours(avspTimer)}`;
+  }
   else if (isWeekend && worked > 0) { badgeClass = 'badge-plus'; badgeText = '+' + formatHours(worked); }
   else if (isWeekend) { badgeClass = 'badge-weekend'; badgeText = 'Helg'; }
   else if (worked === 0) { badgeClass = 'badge-minus'; badgeText = '−' + formatHours(target); }
@@ -1427,7 +1466,7 @@ function renderDayCard(date, now) {
   const absRow = document.createElement('div');
   absRow.className = 'absence-row';
   absRow.innerHTML = '<span>Dagtype:</span>';
-  ['ferie','syk','helligdag'].forEach(type => {
+  ['ferie','syk','helligdag','avspasering'].forEach(type => {
     const btn = document.createElement('button');
     btn.className = 'absence-btn' + (dayAbsence[dk] === type ? ' active-' + type : '');
     btn.textContent = ABSENCE_LABELS[type];
@@ -1442,23 +1481,100 @@ function renderDayCard(date, now) {
     absRow.appendChild(clrBtn);
   }
   card.appendChild(absRow);
+
+  // Vis justeringsmulighet kun for avspasering
+  if (dayAbsence[dk] === 'avspasering') {
+    const adjustRow = document.createElement('div');
+    adjustRow.className = 'absence-row';
+    adjustRow.style.borderTop = 'none';
+    adjustRow.style.paddingTop = '0';
+    const customHours = dayAvspaseringTimer[dk];
+    const displayText = customHours !== undefined
+      ? `Avspasert: ${formatHours(customHours)}`
+      : `Avspasert: ${formatHours(WORK_HOURS_PER_DAY)} (hel dag)`;
+    adjustRow.innerHTML = `<span style="color:var(--purple-800);font-weight:500;">${displayText}</span>`;
+    const adjustBtn = document.createElement('button');
+    adjustBtn.className = 'absence-btn';
+    adjustBtn.textContent = '✎ Juster timer';
+    adjustBtn.onclick = () => openAvspaseringModal(dk);
+    adjustRow.appendChild(adjustBtn);
+    card.appendChild(adjustRow);
+  }
+
   return card;
+}
+
+function openAvspaseringModal(dk) {
+  avspaseringTarget = dk;
+  const current = dayAvspaseringTimer[dk];
+  const currentVal = current !== undefined ? current : WORK_HOURS_PER_DAY;
+  const h = Math.floor(currentVal);
+  const m = Math.round((currentVal - h) * 60);
+  document.getElementById('avspaseringHours').value = h;
+  document.getElementById('avspaseringMinutes').value = m;
+  document.getElementById('avspaseringModal').style.display = 'flex';
+}
+
+function closeAvspaseringModal() {
+  document.getElementById('avspaseringModal').style.display = 'none';
+  avspaseringTarget = null;
+}
+
+async function saveAvspaseringTimer() {
+  if (!avspaseringTarget) return;
+  const h = parseInt(document.getElementById('avspaseringHours').value) || 0;
+  const m = parseInt(document.getElementById('avspaseringMinutes').value) || 0;
+  const totalHours = h + (m / 60);
+
+  if (totalHours <= 0) { showToast('Antall timer må være over 0'); return; }
+
+  dayAvspaseringTimer[avspaseringTarget] = totalHours;
+
+  try {
+    localStorage.setItem('tt_avspasering_local', JSON.stringify(dayAvspaseringTimer));
+  } catch(e) {}
+
+  if (!demoMode && db) {
+    colPath().doc('avspasering_' + avspaseringTarget).set({
+      type: 'avspasering_timer', dateKey: avspaseringTarget, timer: totalHours
+    }).catch(e => {});
+  }
+
+  document.getElementById('avspaseringModal').style.display = 'none';
+  avspaseringTarget = null;
+  renderAll();
+  showToast('Avspasering justert til ' + formatHours(totalHours));
 }
 
 function toggleAbsence(dk, type) {
   if (type === null) {
     delete dayAbsence[dk];
+    delete dayAvspaseringTimer[dk];
   } else {
-    dayAbsence[dk] = dayAbsence[dk] === type ? undefined : type;
+    const wasActive = dayAbsence[dk] === type;
+    dayAbsence[dk] = wasActive ? undefined : type;
     if (dayAbsence[dk] === undefined) delete dayAbsence[dk];
+
+    if (type === 'avspasering' && !wasActive) {
+      dayAvspaseringTimer[dk] = WORK_HOURS_PER_DAY;
+    } else if ((wasActive && type === 'avspasering') || dayAbsence[dk] !== 'avspasering') {
+      delete dayAvspaseringTimer[dk];
+    }
   }
-  if (demoMode) {
-    try { localStorage.setItem('tt_absence_local', JSON.stringify(dayAbsence)); } catch(e) {}
-  } else if (db) {
+
+  try {
+    localStorage.setItem('tt_absence_local', JSON.stringify(dayAbsence));
+    localStorage.setItem('tt_avspasering_local', JSON.stringify(dayAvspaseringTimer));
+  } catch(e) {}
+
+  if (!demoMode && db) {
     if (dayAbsence[dk]) {
       colPath().doc('absence_' + dk).set({type: 'absence', dateKey: dk, absenceType: dayAbsence[dk]}).catch(e=>{});
     } else {
       colPath().doc('absence_' + dk).delete().catch(e=>{});
+    }
+    if (!dayAvspaseringTimer[dk]) {
+      colPath().doc('avspasering_' + dk).delete().catch(e=>{});
     }
   }
   renderAll();
@@ -1493,8 +1609,12 @@ function formatTime(d) {
   return pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
 function formatHours(h) {
-  if (h === 0) return '0,00';
-  return h.toFixed(2).replace('.', ',');
+  const sign = h < 0 ? '-' : '';
+  const abs = Math.abs(h);
+  const totalMinutes = Math.round(abs * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${sign}${hours}t ${String(minutes).padStart(2,'0')}min`;
 }
 function getWeekStart(d) {
   const dd = new Date(d);
@@ -1511,6 +1631,12 @@ function getWorkedHours(dateKey, now) {
     const end = e.end ? new Date(e.end) : now;
     return sum + (end - start) / 3600000;
   }, 0);
+}
+
+function getAvspaseringHours(dateKey) {
+  // Returnerer antall timer avspasert denne dagen (egendefinert eller full normtid)
+  if (dayAbsence[dateKey] !== 'avspasering') return 0;
+  return dayAvspaseringTimer[dateKey] !== undefined ? dayAvspaseringTimer[dateKey] : WORK_HOURS_PER_DAY;
 }
 function monthName(m) {
   return ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'][m];
@@ -1612,20 +1738,23 @@ function lagtInnIGAT() {
   } else {
     periodStart = new Date(START_DATE);
   }
+  let totalAvspasering = 0;
   const d = new Date(periodStart);
   while (toDateKey(d) <= todayKey) {
     const dk = toDateKey(d);
     const dow = d.getDay();
     const isWeekend = (dow === 0 || dow === 6);
     const absence = dayAbsence[dk];
+    const fullDayAbsence = absence && absence !== 'avspasering';
     const worked = getWorkedHours(dk, now);
     totalWorked += worked;
-    if (!isWeekend && !absence) totalTarget += WORK_HOURS_PER_DAY;
+    if (!isWeekend && !fullDayAbsence) totalTarget += WORK_HOURS_PER_DAY;
+    if (absence === 'avspasering') totalAvspasering += getAvspaseringHours(dk);
     d.setDate(d.getDate() + 1);
   }
 
   // Periode-differanse siden sist GAT-registrering
-  const periodDiff = totalWorked - totalTarget;
+  const periodDiff = totalWorked - totalTarget - totalAvspasering;
   const periodMinus = periodDiff < 0 ? Math.abs(periodDiff) : 0;
   const periodPlus = periodDiff > 0 ? periodDiff : 0;
 
@@ -1711,6 +1840,7 @@ async function resetAllData() {
     localStorage.removeItem('tt_active_local');
     localStorage.removeItem('tt_gat_offset');
     localStorage.removeItem('tt_absence_local');
+    localStorage.removeItem('tt_avspasering_local');
     localStorage.removeItem('tt_gat_history');
   } catch(e) {}
 
@@ -1720,6 +1850,7 @@ async function resetAllData() {
   gatOffsetDate = null;
   gatHistory = [];
   dayAbsence = {};
+  dayAvspaseringTimer = {};
   startSaldo = 0;
   try { localStorage.removeItem('tt_work_settings'); } catch(e) {}
 
@@ -2046,9 +2177,10 @@ function renderMonthOverview() {
       const dow = day.getDay();
       const isWk = (dow === 0 || dow === 6);
       const abs = dayAbsence[dk];
+      const fullDayAbsence = abs && abs !== 'avspasering';
       const worked = getWorkedHours(dk, now);
       mWorked += worked;
-      if (!isWk && !abs) mTarget += WORK_HOURS_PER_DAY;
+      if (!isWk && !fullDayAbsence) mTarget += WORK_HOURS_PER_DAY;
       if (abs) mAbsence++;
     });
 
@@ -2150,8 +2282,9 @@ function exportCSV() {
     const dow = d.getDay();
     const isWk = (dow === 0 || dow === 6);
     const abs = dayAbsence[dk];
+    const fullDayAbsence = abs && abs !== 'avspasering';
     const worked = getWorkedHours(dk, now);
-    const target = (isWk || abs) ? 0 : WORK_HOURS_PER_DAY;
+    const target = (isWk || fullDayAbsence) ? 0 : WORK_HOURS_PER_DAY;
     const diff = worked - target;
     const dagtype = abs ? ABSENCE_LABELS[abs] : (isWk ? 'Helg' : 'Arbeidsdag');
     csv += `${dk};${DAY_NAMES[dow]};${worked.toFixed(2).replace('.',',')};${target.toFixed(2).replace('.',',')};${diff.toFixed(2).replace('.',',')};${dagtype}\n`;
