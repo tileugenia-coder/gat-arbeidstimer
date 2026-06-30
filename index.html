@@ -1356,8 +1356,10 @@ function updateSummary() {
     if (wd > now) break;
     const dk = toDateKey(wd);
     const dow = wd.getDay();
+    const wAbs = dayAbsence[dk];
+    const wFullDayAbsence = wAbs && wAbs !== 'avspasering';
     weekWorked += getWorkedHours(dk, now);
-    if (dow !== 0 && dow !== 6) weekTarget += WORK_HOURS_PER_DAY;
+    if (dow !== 0 && dow !== 6 && !wFullDayAbsence) weekTarget += WORK_HOURS_PER_DAY;
   }
   document.getElementById('sumWeek').textContent = formatHours(weekWorked);
   document.getElementById('weekTarget').textContent = formatHours(weekTarget);
